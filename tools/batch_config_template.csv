@@ -1,0 +1,5 @@
+文件名,音色ID,预览文本
+sample1.wav,voice001,你好，这是第一个测试音频。
+sample2.mp3,voice002,Hello, this is the second test audio.
+sample3.m4a,voice003,这是一个中文测试音频，用于验证音色质量。
+sample4.flac,voice004,This is an English test audio for voice quality verification. 

@@ -24,6 +24,7 @@ dev = [
     "mypy>=1.0.0",
     "ipdb",
     "pre-commit>=3.0.0",
+    "streamlit>=1.46.1",
 ]
 
 [project.scripts]

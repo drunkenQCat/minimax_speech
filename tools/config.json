@@ -1,0 +1,7 @@
+{
+  "MINIMAX_API_KEY": "",
+  "MINIMAX_GROUP_ID": "",
+  "MINIMAX_BASE_URL": "https://api.minimax.io/v1",
+  "MINIMAX_TIMEOUT": 30,
+  "MINIMAX_MAX_RETRIES": 3
+} 

@@ -64,7 +64,7 @@ def main():
 
         # eng_tts(client)
 
-        # simple_example(client)
+        simple_example(client)
 
     except Exception as e:
         print(f"❌ 错误: {str(e)}")
@@ -73,7 +73,7 @@ def main():
         client.close()
 
 
-def simple_example(client):
+def simple_example(client: MiniMaxSpeech):
     print("\n示例3: 使用简化接口")
     response = client.text_to_speech_simple(
         text="这是一个使用简化接口的示例。",
@@ -82,12 +82,12 @@ def simple_example(client):
         speed=1.2,
         volume=1.0,
         pitch=2,
-        format="mp3",
+        format="pcm",
     )
     audio_bytes = binascii.unhexlify(response.data.audio)
-    with open("simple_output.mp3", "wb") as f:
+    with open("simple_output.wav", "wb") as f:
         f.write(audio_bytes)
-    print(f"✅ 简化接口音频已保存: simple_output.mp3")
+    print(f"✅ 简化接口音频已保存: simple_output.wav")
     print(f"文本长度: {len('这是一个使用简化接口的示例。')} 字符")
     if response.extra_info:
         print(f"音频时长: {response.extra_info.audio_length} 毫秒")

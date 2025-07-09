@@ -126,8 +126,6 @@ for voice in cloned_voices:
 voice_response = client.get_voice("voice_cloning")
 print(f"克隆语音数量: {len(voice_response.voice_cloning)}")
 
-# 注意：get_voice只能查询到网页上手动克隆的音色，API创建的语音克隆不会显示
-
 ### 文件上传
 
 ```python
@@ -322,7 +320,7 @@ git clone https://github.com/drunkenQCat/minimax-speech.git
 cd minimax-speech
 
 # 安装开发依赖
-pip install -e ".[dev]"
+uv sync --all-extras
 
 # 运行测试
 pytest
