@@ -12,7 +12,13 @@ from .tts_models import (
     T2ARequest,
     T2AResponse,
 )
-from .common_models import ValidSr, ValidBitRate, ValidAudioFormat, ValidModels
+from .common_models import (
+    ValidEmotions,
+    ValidSr,
+    ValidBitRate,
+    ValidAudioFormat,
+    ValidModels,
+)
 from .exceptions import MiniMaxAPIError, MiniMaxTimeoutError
 from .voice_query_models import VoiceListResponse, VoiceSlot, VoiceType
 from .file_upload_models import FileUploadResponse
@@ -466,6 +472,7 @@ class AsyncMiniMaxSpeech:
         speed: float = 1.0,
         volume: float = 1.0,
         pitch: int = 0,
+        emotion: Optional[ValidEmotions] = None,
         format: ValidAudioFormat = "mp3",
         sample_rate: ValidSr = 32000,
         bitrate: ValidBitRate = 128000,
@@ -480,6 +487,7 @@ class AsyncMiniMaxSpeech:
             speed: 语速 (0.5-2.0)
             volume: 音量 (0-10)
             pitch: 音调 (-12到12)
+            emotion: 情感 (happy, sad, angry, fearful, disgusted, surprised, neutral)
             format: 音频格式 (mp3, pcm, flac)
             sample_rate: 采样率
             bitrate: 比特率
@@ -490,7 +498,7 @@ class AsyncMiniMaxSpeech:
         from .tts_models import VoiceSetting, AudioSetting, T2ARequest
 
         voice_setting = VoiceSetting(
-            voice_id=voice_id, speed=speed, vol=volume, pitch=pitch
+            voice_id=voice_id, speed=speed, vol=volume, pitch=pitch, emotion=emotion
         )
 
         audio_setting = AudioSetting(

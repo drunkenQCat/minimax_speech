@@ -9,6 +9,9 @@ ValidModels = Literal[
     "speech-02-hd", "speech-01-turbo", "speech-01-hd", "speech-01-turbo"
 ]
 ValidDeleteVoiceType = Literal["voice_generation", "voice_cloning"]
+ValidEmotions = Literal[
+    "happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"
+]
 
 
 class BaseResponse(BaseModel):

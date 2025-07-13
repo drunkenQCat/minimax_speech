@@ -113,6 +113,7 @@ uv run streamlit run tools/voice_manager.py
 - **语速**: 0.5-2.0，1.0为正常速度
 - **音量**: 0-10，1.0为正常音量
 - **音调**: -12到12，0为正常音调
+- **情感**: 选择语音的情感表达（happy, sad, angry, fearful, disgusted, surprised, neutral）
 - **模型**: 选择不同的TTS模型
 
 ### 克隆参数

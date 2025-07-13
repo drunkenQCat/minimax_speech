@@ -74,6 +74,7 @@ response = client.text_to_speech_simple(
     speed=1.0,
     volume=1.0,
     pitch=0,
+    emotion="happy",  # 可选：happy, sad, angry, fearful, disgusted, surprised, neutral
     format="mp3"
 )
 
@@ -245,6 +246,10 @@ async with AsyncMiniMaxSpeech(api_key="your_api_key", group_id="your_group_id") 
 ```bash
 # 文本转语音
 minimax-speech t2a "你好，世界！" --voice-id Wise_Woman --output hello.mp3
+
+# 带情感的文本转语音
+minimax-speech t2a "我很开心！" --voice-id Wise_Woman --emotion happy --output happy.mp3
+minimax-speech t2a "我很伤心。" --voice-id Wise_Woman --emotion sad --output sad.mp3
 
 # 查看所有语音
 minimax-speech voices

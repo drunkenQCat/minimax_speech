@@ -9,6 +9,7 @@ import json
 import tempfile
 import binascii
 
+import numpy as np
 import pandas as pd
 import io
 
@@ -289,6 +290,25 @@ def main():
                             "模型", ["speech-02-hd", "speech-01-turbo", "speech-01-hd"]
                         )
 
+                    # 情感参数
+                    emotion = st.selectbox(
+                        "情感",
+                        options=[
+                            "无",
+                            "happy",
+                            "sad",
+                            "angry",
+                            "fearful",
+                            "disgusted",
+                            "surprised",
+                            "neutral",
+                        ],
+                        help="选择语音的情感表达",
+                    )
+
+                    # 将"无"转换为None
+                    emotion_value = None if emotion == "无" else emotion
+
                     if st.button("🎵 生成测试音频", type="primary"):
                         if test_text.strip():
                             with st.spinner("正在生成音频..."):
@@ -298,7 +318,10 @@ def main():
                                     speed=speed,
                                     volume=volume,
                                     pitch=pitch,
+                                    emotion=emotion_value,
                                     model=model,
+                                    sample_rate=44100,
+                                    bitrate=256000,
                                 )
 
                                 if result:
@@ -345,8 +368,8 @@ def main():
                 
                 **支持的音频格式：**
                 - MP3 (默认)
-                - 采样率: 32000Hz
-                - 比特率: 128kbps
+                - 采样率: 44100
+                - 比特率: 256kbps
                 """
                 )
 
@@ -557,7 +580,11 @@ def main():
                     try:
                         # 读取CSV文件
                         csv_content = csv_file.read().decode("utf-8")
-                        df = pd.read_csv(io.StringIO(csv_content))
+                        df = pd.read_csv(
+                            io.StringIO(csv_content),
+                            na_values=["", "nan", "NaN"],
+                            keep_default_na=False,
+                        )
 
                         # 验证CSV格式
                         if len(df.columns) >= 2:
@@ -571,6 +598,13 @@ def main():
                                 preview_text = (
                                     row.iloc[2] if len(df.columns) > 2 else None
                                 )  # 第三列：预览文本
+
+                                # 处理空值，将空字符串转换为None
+                                if voice_id == "" or voice_id is None:
+                                    voice_id = None
+                                if preview_text is None or np.isnan(preview_text):
+                                    preview_text = ""
+
                                 csv_config[filename] = {
                                     "voice_id": voice_id,
                                     "preview_text": preview_text,
@@ -597,17 +631,19 @@ def main():
                     )
 
                     # 音色ID输入
+                    custom_id_value = custom_voice_ids.get(i, default_id)
                     custom_id = st.text_input(
                         f"音色ID {i+1}: {file.name}",
-                        value=custom_voice_ids.get(i, default_id),
+                        value=custom_id_value,
                         key=f"custom_id_{i}",
                     )
                     custom_voice_ids[i] = custom_id
 
                     # 预览文本输入
+                    preview_text_value = custom_preview_texts.get(i, "")
                     preview_text = st.text_area(
                         f"预览文本 {i+1}: {file.name}",
-                        value=custom_preview_texts.get(i, ""),
+                        value=preview_text_value,
                         height=68,
                         key=f"preview_text_{i}",
                         help="用于验证音色的文本，可选",
@@ -662,6 +698,12 @@ def main():
                                 # 克隆音色
                                 voice_id = custom_voice_ids[i]
                                 preview_text = custom_preview_texts.get(i, None)
+                                # 确保预览文本不是空字符串
+                                if preview_text and preview_text.strip():
+                                    preview_text = preview_text.strip()
+                                else:
+                                    preview_text = None
+
                                 success = voice_manager.clone_voice(
                                     file_id=file_id,
                                     voice_id=voice_id,
@@ -669,7 +711,7 @@ def main():
                                     need_volume_normalization=need_volume_normalization,
                                     accuracy=accuracy,
                                     model=model,
-                                    text=preview_text if preview_text else None,
+                                    text=preview_text,
                                 )
 
                                 if success:

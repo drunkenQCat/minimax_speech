@@ -43,6 +43,8 @@ def create_parser() -> argparse.ArgumentParser:
 示例:
   minimax-speech t2a "你好，世界！" --voice-id Wise_Woman --output hello.mp3
   minimax-speech t2a "Hello, world!" --voice-id Grinch --model speech-02-hd --format mp3
+  minimax-speech t2a "我很开心！" --voice-id Wise_Woman --emotion happy --output happy.mp3
+  minimax-speech t2a "我很伤心。" --voice-id Wise_Woman --emotion sad --output sad.mp3
   minimax-speech voices
   minimax-speech voices --type system
   minimax-speech languages
@@ -64,6 +66,8 @@ def create_parser() -> argparse.ArgumentParser:
     t2a_parser.add_argument("--speed", "-s", type=float, default=1.0, help="语速 (0.5-2.0)")
     t2a_parser.add_argument("--volume", type=float, default=1.0, help="音量 (0-10)")
     t2a_parser.add_argument("--pitch", type=int, default=0, help="音调 (-12到12)")
+    t2a_parser.add_argument("--emotion", choices=["happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"], 
+                           help="情感表达")
     t2a_parser.add_argument("--format", "-f", choices=["mp3", "pcm", "flac"], default="mp3", help="输出格式")
     t2a_parser.add_argument("--sample-rate", type=int, default=32000, help="采样率")
     t2a_parser.add_argument("--bitrate", type=int, default=128000, help="比特率")
@@ -155,7 +159,8 @@ def create_t2a_request(args) -> T2ARequest:
         voice_id=args.voice_id,
         speed=args.speed,
         vol=args.volume,
-        pitch=args.pitch
+        pitch=args.pitch,
+        emotion=args.emotion
     )
     
     audio_setting = AudioSetting(

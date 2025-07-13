@@ -26,6 +26,7 @@ from .common_models import (
     ValidSr,
     ValidBitRate,
     ValidAudioFormat,
+    ValidEmotions,
     ValidModels,
     ValidDeleteVoiceType,
 )
@@ -440,6 +441,7 @@ class MiniMaxSpeech:
         speed: float = 1.0,
         volume: float = 1.0,
         pitch: int = 0,
+        emotion: Optional[ValidEmotions] = None,
         format: ValidAudioFormat = "mp3",
         sample_rate: ValidSr = 32000,
         bitrate: ValidBitRate = 128000,
@@ -454,6 +456,7 @@ class MiniMaxSpeech:
             speed: 语速 (0.5-2.0)
             volume: 音量 (0-10)
             pitch: 音调 (-12到12)
+            emotion: 情感 (happy, sad, angry, fearful, disgusted, surprised, neutral)
             format: 音频格式 (mp3, pcm, flac)
             sample_rate: 采样率
             bitrate: 比特率
@@ -464,7 +467,7 @@ class MiniMaxSpeech:
         from .tts_models import VoiceSetting, AudioSetting, T2ARequest
 
         voice_setting = VoiceSetting(
-            voice_id=voice_id, speed=speed, vol=volume, pitch=pitch
+            voice_id=voice_id, speed=speed, vol=volume, pitch=pitch, emotion=emotion
         )
 
         audio_setting = AudioSetting(
