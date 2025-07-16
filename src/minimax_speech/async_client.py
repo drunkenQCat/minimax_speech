@@ -11,6 +11,7 @@ from .config import APIConfig
 from .tts_models import (
     T2ARequest,
     T2AResponse,
+    Language,
 )
 from .common_models import (
     ValidEmotions,
@@ -476,6 +477,7 @@ class AsyncMiniMaxSpeech:
         format: ValidAudioFormat = "mp3",
         sample_rate: ValidSr = 32000,
         bitrate: ValidBitRate = 128000,
+        language_boost: Optional[Language] = None,
     ) -> T2AResponse:
         """
         简化的文本转语音接口（异步）
@@ -491,6 +493,7 @@ class AsyncMiniMaxSpeech:
             format: 音频格式 (mp3, pcm, flac)
             sample_rate: 采样率
             bitrate: 比特率
+            language_boost: 语言增强 (Chinese, English, French, etc.)
 
         Returns:
             T2AResponse: 语音响应对象
@@ -510,6 +513,7 @@ class AsyncMiniMaxSpeech:
             text=text,
             voice_setting=voice_setting,
             audio_setting=audio_setting,
+            language_boost=language_boost,
         )
 
         return await self.text_to_speech(request)

@@ -21,6 +21,7 @@ from .tts_models import (
     T2ARequest,
     T2AResponse,
     Voice,
+    Language,
 )
 from .common_models import (
     ValidSr,
@@ -445,6 +446,7 @@ class MiniMaxSpeech:
         format: ValidAudioFormat = "mp3",
         sample_rate: ValidSr = 32000,
         bitrate: ValidBitRate = 128000,
+        language_boost: Optional[Language] = None,
     ) -> T2AResponse:
         """
         简化的文本转语音接口
@@ -460,11 +462,12 @@ class MiniMaxSpeech:
             format: 音频格式 (mp3, pcm, flac)
             sample_rate: 采样率
             bitrate: 比特率
+            language_boost: 语言增强 (Chinese, English, French, etc.)
 
         Returns:
             T2AResponse: 语音响应对象
         """
-        from .tts_models import VoiceSetting, AudioSetting, T2ARequest
+        from .tts_models import VoiceSetting, AudioSetting, T2ARequest, Language
 
         voice_setting = VoiceSetting(
             voice_id=voice_id, speed=speed, vol=volume, pitch=pitch, emotion=emotion
@@ -479,6 +482,7 @@ class MiniMaxSpeech:
             text=text,
             voice_setting=voice_setting,
             audio_setting=audio_setting,
+            language_boost=language_boost,
         )
 
         return self.text_to_speech(request)

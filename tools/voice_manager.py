@@ -7,22 +7,77 @@ import streamlit as st
 import os
 import json
 import tempfile
+import time
+import re
+import hashlib
 import binascii
 
 import numpy as np
 import pandas as pd
 import io
+import openpyxl
+from pypinyin import pinyin, Style
 
 # from pathlib import Path
 # import sys
 from minimax_speech import MiniMaxSpeech
-from minimax_speech.tts_models import T2AResponse, Voice
-from minimax_speech.voice_query_models import VoiceCloning
+from minimax_speech.tts_models import T2AResponse, Voice, Language
+from minimax_speech.voice_query_models import SystemVoice, VoiceCloning
 
 
 # 添加项目根目录到 Python 路径
 # project_root = Path(__file__).parent.parent
 # sys.path.insert(0, str(project_root))
+
+
+def generate_safe_filename(st: str) -> str:
+    """根据句子内容生成新的文件名。
+
+    参数:
+        st (Sentence): 句子对象。
+
+    返回:
+        FileInfo: 文件信息对象。
+    """
+    # 生成文件名
+    # 使用str.translate去除所有不可见的控制字符（包括\r, \n, \t等）
+    control_chars = "".join(map(chr, range(0, 32))) + chr(127)
+    safe_file_name = st.translate({ord(c): None for c in control_chars})
+    # 去掉文件名中的非法字符
+    safe_file_name = re.sub(r'[<>:"/\\|?*]', "", safe_file_name)
+    if len(safe_file_name) > 15:
+        safe_file_name = safe_file_name[:15]
+        post_fix = hashlib.md5(str(time.time()).encode()).hexdigest()[:4]
+        safe_file_name = f"{safe_file_name}_{post_fix}"
+        return safe_file_name
+    else:
+        return safe_file_name
+
+
+def convert_to_pinyin(text: str) -> str:
+    """将中文文本转换为拼音"""
+    if not text or not isinstance(text, str):
+        return ""
+    
+    try:
+        # 转换为拼音，使用NORMAL风格（不带声调）
+        pinyin_list = pinyin(text, style=Style.NORMAL)
+        # 将拼音列表连接成字符串
+        return "".join([p[0] for p in pinyin_list if p[0]])
+    except Exception as e:
+        st.error(f"拼音转换失败: {str(e)}")
+        return text
+
+
+def load_excel_data(file_path: str) -> pd.DataFrame:
+    """加载Excel文件数据"""
+    try:
+        # 读取Excel文件
+        df = pd.read_excel(file_path, engine='openpyxl')
+        return df
+    except Exception as e:
+        st.error(f"加载Excel文件失败: {str(e)}")
+        return pd.DataFrame()
 
 
 class VoiceManager:
@@ -89,6 +144,9 @@ class VoiceManager:
     def clone_voice(self, file_id: int, voice_id: str, **kwargs):
         """克隆音色"""
         try:
+            print(file_id)
+            print(voice_id)
+            print(kwargs)
             result = self.client.voice_clone_simple(
                 file_id=file_id, voice_id=voice_id, **kwargs
             )
@@ -137,6 +195,134 @@ def main():
 
     voice_manager = st.session_state.voice_manager
 
+    # Excel表格加载和显示
+    st.header("📊 法语剧本数据")
+    
+    # Excel文件路径
+    excel_path = r"X:\Projects\长空之王法语_250707\01-Originals\《长空之王》中法语完整及两段0621_法语润稿_0716更新.xlsx"
+    
+    # 检查文件是否存在
+    if os.path.exists(excel_path):
+        # 加载Excel数据
+        if "excel_data" not in st.session_state:
+            st.session_state.excel_data = load_excel_data(excel_path)
+        
+        df = st.session_state.excel_data
+        
+        if not df.empty:
+            # 显示表格信息
+            st.info(f"📋 已加载 {len(df)} 行数据，共 {len(df.columns)} 列")
+            
+            # 搜索功能
+            col_search, col_clear = st.columns([3, 1])
+            
+            with col_search:
+                excel_search = st.text_input(
+                    "🔍 搜索Excel数据",
+                    placeholder="输入关键词搜索任意列...",
+                    help="支持搜索任意列的内容，支持中文、拼音、法语等",
+                    key="excel_search",
+                )
+            
+            with col_clear:
+                if excel_search:
+                    if st.button("🗑️ 清除搜索", help="清除搜索条件，显示所有数据"):
+                        if "excel_search" in st.session_state:
+                            del st.session_state.excel_search
+                        st.rerun()
+            
+            # 过滤数据
+            if excel_search:
+                # 在所有列中搜索
+                filtered_df = df[df.apply(
+                    lambda row: any(
+                        excel_search.lower() in str(cell).lower() 
+                        for cell in row if pd.notna(cell)
+                    ), axis=1
+                )]
+                
+                if not filtered_df.empty:
+                    st.success(f"🔍 搜索 '{excel_search}' 找到 {len(filtered_df)} 行匹配数据")
+                else:
+                    st.warning(f"🔍 搜索 '{excel_search}' 没有找到匹配的数据")
+            else:
+                filtered_df = df
+                st.info("💡 输入搜索关键词来过滤数据，避免页面卡顿")
+            
+            # 显示表格（可点击）
+            if not filtered_df.empty:
+                st.subheader("点击行选择数据")
+                
+                # 限制显示行数，避免页面卡顿
+                max_display_rows = 50
+                if len(filtered_df) > max_display_rows:
+                    st.warning(f"⚠️ 搜索结果较多，仅显示前 {max_display_rows} 行。请使用更具体的搜索条件。")
+                    display_df = filtered_df.head(max_display_rows)
+                else:
+                    display_df = filtered_df
+                
+                # 为每行添加点击功能
+                for index, row in display_df.iterrows():
+                    # 创建行容器
+                    with st.container():
+                        col1, col2, col3, col4, col5 = st.columns([1, 2, 2, 2, 3])
+                        
+                        with col1:
+                            # 第一列：序号（去掉冒号）
+                            first_col = str(row.iloc[0]) if len(row) > 0 else ""
+                            first_col_clean = first_col.replace(":", "").strip()
+                            st.write(f"**{first_col_clean}**")
+                        
+                        with col2:
+                            # 第二列
+                            second_col = str(row.iloc[1]) if len(row) > 1 else ""
+                            st.write(second_col[:50] + "..." if len(second_col) > 50 else second_col)
+                        
+                        with col3:
+                            # 第三列（中文，用于生成拼音）
+                            third_col = str(row.iloc[2]) if len(row) > 2 else ""
+                            st.write(third_col[:50] + "..." if len(third_col) > 50 else third_col)
+                        
+                        with col4:
+                            # 第四列
+                            fourth_col = str(row.iloc[3]) if len(row) > 3 else ""
+                            st.write(fourth_col[:50] + "..." if len(fourth_col) > 50 else fourth_col)
+                        
+                        with col5:
+                            # 第五列（测试文本）
+                            fifth_col = str(row.iloc[4]) if len(row) > 4 else ""
+                            fifth_col = fifth_col + "Ne t'inquiète pas"
+                            st.write(fifth_col[:80] + "..." if len(fifth_col) > 80 else fifth_col)
+                        
+                        # 添加点击按钮
+                        if st.button(f"🎯 选择第 {index + 1} 行", key=f"select_row_{index}"):
+                            # 处理点击事件
+                            # 1. 将第三列转换为拼音并搜索音色
+                            pinyin_text = convert_to_pinyin(third_col)
+                            if pinyin_text:
+                                # 设置搜索关键词
+                                st.session_state.test_voice_search = pinyin_text
+                            
+                            # 2. 将第五列填入测试文本
+                            st.session_state.test_text = fifth_col
+                            
+                            # 3. 保存第一列信息用于文件名
+                            st.session_state.file_prefix = first_col_clean
+                            
+                            # 跳转到测试音色标签页
+                            st.session_state.active_tab = "测试音色"
+                            st.success(f"已选择第 {index + 1} 行数据")
+                            st.rerun()
+                        
+                        st.divider()
+            else:
+                st.info("没有数据可显示，请尝试其他搜索条件")
+        else:
+            st.error("Excel文件为空或格式不正确")
+    else:
+        st.error(f"Excel文件不存在: {excel_path}")
+        st.info("请检查文件路径是否正确")
+
     # 侧边栏配置
     with st.sidebar:
         st.header("🔧 配置")
@@ -178,11 +364,260 @@ def main():
 
     # 创建标签页
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        ["📋 音色列表", "🎤 测试音色", "🎭 系统音色", "➕ 添加音色", "📁 批量上传"]
+        ["🎤 测试音色", "📋 音色列表", "🎭 系统音色", "➕ 添加音色", "📁 批量上传"]
     )
 
-    # 标签页1: 音色列表
+    # 标签页1: 测试音色
     with tab1:
+        st.header("🎤 测试音色")
+        
+        # 显示当前选择的数据状态
+        if "file_prefix" in st.session_state and st.session_state.file_prefix:
+            st.info(f"📋 当前选择: {st.session_state.file_prefix} | 搜索关键词: {st.session_state.get('test_voice_search', '无')}")
+            
+            # 添加清除选择按钮
+            if st.button("🗑️ 清除选择", help="清除当前选择的数据"):
+                # 清除所有相关状态
+                for key in ["test_voice_search", "test_text", "file_prefix"]:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.rerun()
+
+        voices = voice_manager.get_voices()
+
+        if not voices:
+            st.info("暂无可用音色进行测试")
+        else:
+            col1, col2 = st.columns(2)
+
+            with col1:
+                # 搜索音色
+                col_search, col_clear = st.columns([3, 1])
+                
+                with col_search:
+                    search_voice = st.text_input(
+                        "🔍 搜索音色",
+                        placeholder="输入音色ID或描述进行搜索...",
+                        help="支持按音色ID或描述搜索，搜索结果会显示在下拉菜单中",
+                        key="test_voice_search",
+                        value=st.session_state.get("test_voice_search", ""),
+                    )
+                
+                with col_clear:
+                    if search_voice:
+                        if st.button("🗑️ 清除", help="清除搜索条件，显示所有音色"):
+                            # 清除搜索状态
+                            if "test_voice_search" in st.session_state:
+                                del st.session_state.test_voice_search
+                            st.rerun()
+                
+                # 过滤音色
+                if search_voice:
+                    filtered_test_voices = [
+                        voice for voice in voices
+                        if search_voice.lower() in voice.voice_id.lower() or 
+                           (voice.description and search_voice.lower() in voice.description.lower())
+                    ]
+                else:
+                    filtered_test_voices = voices
+                
+                # 显示搜索状态
+                if search_voice:
+                    if filtered_test_voices:
+                        st.success(f"🔍 搜索 '{search_voice}' 找到 {len(filtered_test_voices)} 个匹配音色")
+                    else:
+                        st.warning(f"🔍 搜索 '{search_voice}' 没有找到匹配的音色")
+                
+                # 选择音色
+                voice_options = {
+                    f"{v.voice_id} ({v.description or '未命名'})": v.voice_id
+                    for v in filtered_test_voices
+                }
+
+                if voice_options:
+                    # 根据搜索结果调整下拉菜单的提示
+                    if search_voice and filtered_test_voices:
+                        selectbox_label = f"🎯 选择音色 (找到 {len(filtered_test_voices)} 个匹配结果)"
+                        selectbox_help = f"搜索结果：'{search_voice}' 匹配到 {len(filtered_test_voices)} 个音色"
+                    elif search_voice and not filtered_test_voices:
+                        selectbox_label = "❌ 选择音色 (无匹配结果)"
+                        selectbox_help = f"搜索 '{search_voice}' 没有找到匹配的音色"
+                    else:
+                        selectbox_label = "选择音色"
+                        selectbox_help = "选择要测试的音色"
+                    
+                    selected_voice = st.selectbox(
+                        selectbox_label,
+                        options=list(voice_options.keys()),
+                        help=selectbox_help,
+                    )
+
+                    # 测试文本
+                    test_text = st.text_area(
+                        "测试文本",
+                        value=st.session_state.get("test_text", "你好，这是一个测试音频。Hello, this is a test audio."),
+                        height=100,
+                        help="输入要转换为语音的文本",
+                    )
+
+                    # 音频参数
+                    st.subheader("音频参数")
+
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        speed = st.slider("语速", 0.5, 2.0, 1.0, 0.1)
+                        volume = st.slider("音量", 0.0, 10.0, 1.0, 0.1)
+
+                    with col_b:
+                        pitch = st.slider("音调", -12, 12, 0, 1)
+                        model = st.selectbox(
+                            "模型", ["speech-02-hd", "speech-01-turbo", "speech-01-hd"]
+                        )
+
+                    # 情感参数
+                    emotion = st.selectbox(
+                        "情感",
+                        options=[
+                            "无",
+                            "happy",
+                            "sad",
+                            "angry",
+                            "fearful",
+                            "disgusted",
+                            "surprised",
+                            "neutral",
+                        ],
+                        help="选择语音的情感表达",
+                    )
+
+                    # 语言增强参数
+                    language_boost = st.selectbox(
+                        "语言增强",
+                        options=[
+                            "无",
+                            "Chinese",
+                            "English",
+                            "French",
+                            "German",
+                            "Spanish",
+                            "Italian",
+                            "Japanese",
+                            "Korean",
+                            "Russian",
+                            "Arabic",
+                            "Portuguese",
+                            "Turkish",
+                            "Dutch",
+                            "Ukrainian",
+                            "Vietnamese",
+                            "Indonesian",
+                            "Thai",
+                            "Polish",
+                            "Romanian",
+                            "Greek",
+                            "Czech",
+                            "Finnish",
+                            "Hindi",
+                            "auto",
+                        ],
+                        help="选择语言增强，提高特定语言的发音质量",
+                    )
+
+                    # 将"无"转换为None
+                    emotion_value = None if emotion == "无" else emotion
+                    language_boost_value = None if language_boost == "无" else language_boost
+
+                    if st.button("🎵 生成测试音频", type="primary"):
+                        if test_text.strip():
+                            with st.spinner("正在生成音频..."):
+                                result = voice_manager.test_voice(
+                                    voice_id=voice_options[selected_voice],
+                                    text=test_text,
+                                    speed=speed,
+                                    volume=volume,
+                                    pitch=pitch,
+                                    emotion=emotion_value,
+                                    language_boost=language_boost_value,
+                                    model=model,
+                                    sample_rate=44100,
+                                    bitrate=256000,
+                                )
+
+                                if result:
+                                    # 保存音频文件
+                                    audio_data = result.data.audio
+                                    audio_data = binascii.unhexlify(audio_data)
+                                    if audio_data:
+                                        # 创建临时文件
+                                        with tempfile.NamedTemporaryFile(
+                                            delete=False, suffix=".mp3", mode="wb"
+                                        ) as tmp_file:
+                                            tmp_file.write(audio_data)
+                                            tmp_path = tmp_file.name
+
+                                        # 显示音频播放器
+                                        st.audio(tmp_path, format="audio/mp3")
+
+                                        safe_test_text = generate_safe_filename(
+                                            test_text
+                                        )
+                                        # 提供下载链接
+                                        with open(tmp_path, "rb") as f:
+                                            # 获取文件名前缀
+                                            file_prefix = st.session_state.get("file_prefix", "")
+                                            if file_prefix:
+                                                download_filename = f"{file_prefix}_{voice_options[selected_voice]}_{safe_test_text}.mp3"
+                                            else:
+                                                download_filename = f"{voice_options[selected_voice]}_{safe_test_text}.mp3"
+                                            
+                                            st.download_button(
+                                                label="📥 下载音频",
+                                                data=f.read(),
+                                                file_name=download_filename,
+                                                mime="audio/mp3",
+                                            )
+
+                                        # 清理临时文件
+                                        os.unlink(tmp_path)
+                        else:
+                            st.warning("请输入测试文本")
+                else:
+                    st.warning("没有可用的音色进行测试")
+
+            with col2:
+                st.info(
+                    """
+                **使用说明：**
+                
+                1. 使用搜索框快速找到想要的音色
+                2. 选择一个已准备好的音色
+                3. 输入要测试的文本
+                4. 调整音频参数
+                5. 点击生成按钮
+                6. 播放或下载生成的音频
+                
+                **搜索功能：**
+                - 支持按音色ID搜索
+                - 支持按音色描述搜索
+                - 不区分大小写
+                - 实时过滤显示结果
+                
+                **音频参数：**
+                - 语速: 0.5-2.0，1.0为正常速度
+                - 音量: 0-10，1.0为正常音量
+                - 音调: -12到12，0为正常音调
+                - 情感: 选择语音的情感表达
+                - 语言增强: 提高特定语言的发音质量
+                
+                **支持的音频格式：**
+                - MP3 (默认)
+                - 采样率: 44100
+                - 比特率: 256kbps
+                """
+                )
+
+    # 标签页2: 音色列表
+    with tab2:
         st.header("📋 音色列表")
 
         voices = voice_manager.get_voices()
@@ -243,136 +678,6 @@ def main():
                                 st.session_state.confirm_delete_id = None
                     st.divider()
 
-    # 标签页2: 测试音色
-    with tab2:
-        st.header("🎤 测试音色")
-
-        voices = voice_manager.get_voices()
-
-        if not voices:
-            st.info("暂无可用音色进行测试")
-        else:
-            col1, col2 = st.columns(2)
-
-            with col1:
-                # 选择音色
-                voice_options = {
-                    f"{v.voice_id} ({v.description or '未命名'})": v.voice_id
-                    for v in voices
-                }
-
-                if voice_options:
-                    selected_voice = st.selectbox(
-                        "选择音色",
-                        options=list(voice_options.keys()),
-                        help="选择要测试的音色",
-                    )
-
-                    # 测试文本
-                    test_text = st.text_area(
-                        "测试文本",
-                        value="你好，这是一个测试音频。Hello, this is a test audio.",
-                        height=100,
-                        help="输入要转换为语音的文本",
-                    )
-
-                    # 音频参数
-                    st.subheader("音频参数")
-
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        speed = st.slider("语速", 0.5, 2.0, 1.0, 0.1)
-                        volume = st.slider("音量", 0.0, 10.0, 1.0, 0.1)
-
-                    with col_b:
-                        pitch = st.slider("音调", -12, 12, 0, 1)
-                        model = st.selectbox(
-                            "模型", ["speech-02-hd", "speech-01-turbo", "speech-01-hd"]
-                        )
-
-                    # 情感参数
-                    emotion = st.selectbox(
-                        "情感",
-                        options=[
-                            "无",
-                            "happy",
-                            "sad",
-                            "angry",
-                            "fearful",
-                            "disgusted",
-                            "surprised",
-                            "neutral",
-                        ],
-                        help="选择语音的情感表达",
-                    )
-
-                    # 将"无"转换为None
-                    emotion_value = None if emotion == "无" else emotion
-
-                    if st.button("🎵 生成测试音频", type="primary"):
-                        if test_text.strip():
-                            with st.spinner("正在生成音频..."):
-                                result = voice_manager.test_voice(
-                                    voice_id=voice_options[selected_voice],
-                                    text=test_text,
-                                    speed=speed,
-                                    volume=volume,
-                                    pitch=pitch,
-                                    emotion=emotion_value,
-                                    model=model,
-                                    sample_rate=44100,
-                                    bitrate=256000,
-                                )
-
-                                if result:
-                                    # 保存音频文件
-                                    audio_data = result.data.audio
-                                    audio_data = binascii.unhexlify(audio_data)
-                                    if audio_data:
-                                        # 创建临时文件
-                                        with tempfile.NamedTemporaryFile(
-                                            delete=False, suffix=".mp3", mode="wb"
-                                        ) as tmp_file:
-                                            tmp_file.write(audio_data)
-                                            tmp_path = tmp_file.name
-
-                                        # 显示音频播放器
-                                        st.audio(tmp_path, format="audio/mp3")
-
-                                        # 提供下载链接
-                                        with open(tmp_path, "rb") as f:
-                                            st.download_button(
-                                                label="📥 下载音频",
-                                                data=f.read(),
-                                                file_name=f"test_audio_{voice_options[selected_voice]}.mp3",
-                                                mime="audio/mp3",
-                                            )
-
-                                        # 清理临时文件
-                                        os.unlink(tmp_path)
-                        else:
-                            st.warning("请输入测试文本")
-                else:
-                    st.warning("没有可用的音色进行测试")
-
-            with col2:
-                st.info(
-                    """
-                **使用说明：**
-                
-                1. 选择一个已准备好的音色
-                2. 输入要测试的文本
-                3. 调整音频参数
-                4. 点击生成按钮
-                5. 播放或下载生成的音频
-                
-                **支持的音频格式：**
-                - MP3 (默认)
-                - 采样率: 44100
-                - 比特率: 256kbps
-                """
-                )
-
     # 标签页3: 系统音色测试
     with tab3:
         st.header("🎭 系统音色测试")
@@ -384,13 +689,13 @@ def main():
 
         # 获取基础系统音色（枚举中的）
         base_system_voices = list(Voice)
-        
+
         # 合并基础音色和API获取的音色
         system_voices = base_system_voices + st.session_state.api_system_voices
-        
+
         # 添加获取API系统音色的按钮
         col_refresh, col_clear, col_search, col_clear_search = st.columns([1, 1, 2, 1])
-        
+
         with col_refresh:
             if st.button("🔄 获取最新系统音色", help="从API获取最新的系统音色列表"):
                 if voice_manager.client:
@@ -404,18 +709,21 @@ def main():
                                 for voice_info in api_response.system_voice:
                                     # 创建一个类似Voice枚举的对象
                                     class APIVoice:
-                                        def __init__(self, voice_id, name, description=""):
+                                        def __init__(
+                                            self, voice_id, name, description=""
+                                        ):
                                             self.value = voice_id
                                             self.name = name
                                             self.description = description
-                                    
+
                                     api_voice = APIVoice(
                                         voice_id=voice_info.voice_id,
-                                        name=voice_info.voice_name or voice_info.voice_id,
-                                        description=voice_info.description or ""
+                                        name=voice_info.voice_name
+                                        or voice_info.voice_id,
+                                        description=voice_info.description or "",
                                     )
                                     api_voices.append(api_voice)
-                                
+
                                 # 更新session_state
                                 st.session_state.api_system_voices = api_voices
                                 st.success(f"成功获取 {len(api_voices)} 个系统音色")
@@ -426,22 +734,22 @@ def main():
                             st.error(f"获取系统音色失败: {str(e)}")
                 else:
                     st.error("请先连接客户端")
-        
+
         with col_clear:
             if st.button("🗑️ 清除API音色", help="清除从API获取的音色，只保留基础音色"):
                 st.session_state.api_system_voices = []
                 st.success("已清除API音色")
                 st.rerun()
-        
+
         with col_search:
             # 搜索框
             search_term = st.text_input(
                 "🔍 搜索音色",
                 placeholder="输入音色名称或描述进行搜索...",
                 help="支持按音色ID、名称或描述搜索，搜索结果会显示在下拉菜单中",
-                key="search_term"
+                key="search_term",
             )
-        
+
         with col_clear_search:
             if search_term:
                 if st.button("🗑️ 清除搜索", help="清除搜索条件，显示所有音色"):
@@ -449,49 +757,61 @@ def main():
                     if "search_term" in st.session_state:
                         del st.session_state.search_term
                     st.rerun()
-            
+
         # 过滤音色
         if search_term:
             filtered_voices = [
-                voice for voice in system_voices
-                if search_term.lower() in voice.value.lower() or 
-                   search_term.lower() in voice.name.lower() or
-                   (hasattr(voice, 'description') and voice.description and 
-                    search_term.lower() in voice.description.lower())
+                voice
+                for voice in system_voices
+                if search_term.lower() in voice.value.lower()
+                or search_term.lower() in voice.name.lower()
+                or (
+                    hasattr(voice, "description")
+                    and voice.description
+                    and search_term.lower() in voice.description.lower()
+                )
             ]
         else:
             filtered_voices = system_voices
-        
+
         # 显示当前音色来源和搜索状态
         if search_term:
             if filtered_voices:
-                st.success(f"🔍 搜索 '{search_term}' 找到 {len(filtered_voices)} 个匹配音色 ↓ 请在下拉菜单中选择")
+                st.success(
+                    f"🔍 搜索 '{search_term}' 找到 {len(filtered_voices)} 个匹配音色 ↓ 请在下拉菜单中选择"
+                )
             else:
                 st.warning(f"🔍 搜索 '{search_term}' 没有找到匹配的音色")
         else:
             if st.session_state.api_system_voices:
-                st.info(f"📊 当前显示 {len(system_voices)} 个音色（基础 {len(base_system_voices)} + API {len(st.session_state.api_system_voices)}）")
+                st.info(
+                    f"📊 当前显示 {len(system_voices)} 个音色（基础 {len(base_system_voices)} + API {len(st.session_state.api_system_voices)}）"
+                )
             else:
                 st.info(f"📊 当前显示 {len(system_voices)} 个基础音色")
-        
+
         if not filtered_voices:
             st.info("没有找到匹配的音色")
         else:
             col1, col2 = st.columns(2)
-            
+
             with col1:
                 # 选择音色
                 voice_options = {}
                 for voice in filtered_voices:
-                    if hasattr(voice, 'description') and voice.description:
-                        display_name = f"{voice.value} ({voice.name}) - {voice.description}"
+                    if hasattr(voice, "description") and voice.description:
+                        display_name = (
+                            f"{voice.value} ({voice.name}) - {voice.description}"
+                        )
                     else:
                         display_name = f"{voice.value} ({voice.name})"
                     voice_options[display_name] = voice.value
-                
+
                 # 根据搜索结果调整下拉菜单的提示
                 if search_term and filtered_voices:
-                    selectbox_label = f"🎯 选择系统音色 (找到 {len(filtered_voices)} 个匹配结果)"
+                    selectbox_label = (
+                        f"🎯 选择系统音色 (找到 {len(filtered_voices)} 个匹配结果)"
+                    )
                     selectbox_help = f"搜索结果：'{search_term}' 匹配到 {len(filtered_voices)} 个音色"
                 elif search_term and not filtered_voices:
                     selectbox_label = "❌ 选择系统音色 (无匹配结果)"
@@ -499,13 +819,13 @@ def main():
                 else:
                     selectbox_label = "选择系统音色"
                     selectbox_help = "选择要测试的系统音色"
-                
+
                 selected_voice = st.selectbox(
                     selectbox_label,
                     options=list(voice_options.keys()),
                     help=selectbox_help,
                 )
-                
+
                 # 测试文本
                 test_text = st.text_area(
                     "测试文本",
@@ -513,23 +833,23 @@ def main():
                     height=100,
                     help="输入要转换为语音的文本",
                 )
-                
+
                 # 音频参数
                 st.subheader("音频参数")
-                
+
                 col_a, col_b = st.columns(2)
                 with col_a:
                     speed = st.slider("语速", 0.5, 2.0, 1.0, 0.1, key="sys_speed")
                     volume = st.slider("音量", 0.0, 10.0, 1.0, 0.1, key="sys_volume")
-                
+
                 with col_b:
                     pitch = st.slider("音调", -12, 12, 0, 1, key="sys_pitch")
                     model = st.selectbox(
-                        "模型", 
+                        "模型",
                         ["speech-02-hd", "speech-01-turbo", "speech-01-hd"],
-                        key="sys_model"
+                        key="sys_model",
                     )
-                
+
                 # 情感参数
                 emotion = st.selectbox(
                     "情感",
@@ -544,14 +864,51 @@ def main():
                         "neutral",
                     ],
                     help="选择语音的情感表达",
-                    key="sys_emotion"
+                    key="sys_emotion",
                 )
-                
+
+                # 语言增强参数
+                language_boost = st.selectbox(
+                    "语言增强",
+                    options=[
+                        "无",
+                        "Chinese",
+                        "English",
+                        "French",
+                        "German",
+                        "Spanish",
+                        "Italian",
+                        "Japanese",
+                        "Korean",
+                        "Russian",
+                        "Arabic",
+                        "Portuguese",
+                        "Turkish",
+                        "Dutch",
+                        "Ukrainian",
+                        "Vietnamese",
+                        "Indonesian",
+                        "Thai",
+                        "Polish",
+                        "Romanian",
+                        "Greek",
+                        "Czech",
+                        "Finnish",
+                        "Hindi",
+                        "auto",
+                    ],
+                    help="选择语言增强，提高特定语言的发音质量",
+                    key="sys_language_boost",
+                )
+
                 # 将"无"转换为None
                 emotion_value = None if emotion == "无" else emotion
-                
+                language_boost_value = None if language_boost == "无" else language_boost
+
                 if st.button("🎵 生成测试音频", type="primary", key="sys_generate"):
                     if test_text.strip():
+                        # TODO
+                        safe_test_text = generate_safe_filename(test_text)
                         with st.spinner("正在生成音频..."):
                             result = voice_manager.test_voice(
                                 voice_id=voice_options[selected_voice],
@@ -560,11 +917,12 @@ def main():
                                 volume=volume,
                                 pitch=pitch,
                                 emotion=emotion_value,
+                                language_boost=language_boost_value,
                                 model=model,
                                 sample_rate=44100,
                                 bitrate=256000,
                             )
-                            
+
                             if result:
                                 # 保存音频文件
                                 audio_data = result.data.audio
@@ -576,24 +934,25 @@ def main():
                                     ) as tmp_file:
                                         tmp_file.write(audio_data)
                                         tmp_path = tmp_file.name
-                                    
+
                                     # 显示音频播放器
                                     st.audio(tmp_path, format="audio/mp3")
-                                    
+
                                     # 提供下载链接
                                     with open(tmp_path, "rb") as f:
+                                        test_text.strip()
                                         st.download_button(
                                             label="📥 下载音频",
                                             data=f.read(),
-                                            file_name=f"system_voice_{voice_options[selected_voice]}.mp3",
+                                            file_name=f"{voice_options[selected_voice]}_{safe_test_text}.mp3",
                                             mime="audio/mp3",
                                         )
-                                    
+
                                     # 清理临时文件
                                     os.unlink(tmp_path)
                     else:
                         st.warning("请输入测试文本")
-            
+
             with col2:
                 st.info(
                     f"""
@@ -625,36 +984,45 @@ def main():
                 - 甜美女孩2 (Sweet_Girl_2)
                 - 热情女孩 (Exuberant_Girl)
                 
+                **音频参数：**
+                - 语速: 0.5-2.0，1.0为正常速度
+                - 音量: 0-10，1.0为正常音量
+                - 音调: -12到12，0为正常音调
+                - 情感: 选择语音的情感表达
+                - 语言增强: 提高特定语言的发音质量
+                
                 **搜索功能：**
                 - 支持按音色ID搜索
                 - 支持按音色描述搜索
                 - 不区分大小写
                 """
                 )
-                
+
                 # 显示所有系统音色列表
                 st.subheader("📋 所有系统音色")
                 voice_list = []
                 for voice in system_voices:
                     description = ""
-                    if hasattr(voice, 'description') and voice.description:
+                    if hasattr(voice, "description") and voice.description:
                         description = voice.description
-                    elif hasattr(voice, 'name'):
+                    elif hasattr(voice, "name"):
                         description = voice.name
-                    
-                    voice_list.append({
-                        "音色ID": voice.value,
-                        "描述": description,
-                        "来源": "API" if voice in st.session_state.api_system_voices else "基础"
-                    })
-                
+
+                    voice_list.append(
+                        {
+                            "音色ID": voice.value,
+                            "描述": description,
+                            "来源": (
+                                "API"
+                                if voice in st.session_state.api_system_voices
+                                else "基础"
+                            ),
+                        }
+                    )
+
                 # 创建可滚动的音色列表
                 voice_df = pd.DataFrame(voice_list)
-                st.dataframe(
-                    voice_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
+                st.dataframe(voice_df, use_container_width=True, hide_index=True)
 
     # 标签页4: 添加音色
     with tab4:
