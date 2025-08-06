@@ -58,7 +58,7 @@ def convert_to_pinyin(text: str) -> str:
     """将中文文本转换为拼音"""
     if not text or not isinstance(text, str):
         return ""
-    
+
     try:
         # 转换为拼音，使用NORMAL风格（不带声调）
         pinyin_list = pinyin(text, style=Style.NORMAL)
@@ -73,7 +73,7 @@ def load_excel_data(file_path: str) -> pd.DataFrame:
     """加载Excel文件数据"""
     try:
         # 读取Excel文件
-        df = pd.read_excel(file_path, engine='openpyxl')
+        df = pd.read_excel(file_path, engine="openpyxl")
         return df
     except Exception as e:
         st.error(f"加载Excel文件失败: {str(e)}")
@@ -183,7 +183,7 @@ def main():
         page_title="MiniMax 音色管理器",
         page_icon="🎵",
         layout="wide",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state="collapsed",
     )
 
     st.title("🎵 MiniMax 音色管理器")
@@ -194,28 +194,30 @@ def main():
         st.session_state.voice_manager = VoiceManager()
 
     voice_manager = st.session_state.voice_manager
+    voice_manager.get_voices(force_refresh=True)
+    st.success("音色列表已刷新！")
 
     # Excel表格加载和显示
     st.header("📊 法语剧本数据")
-    
+
     # Excel文件路径
     excel_path = r"X:\Projects\长空之王法语_250707\01-Originals\《长空之王》中法语完整及两段0621_法语润稿_0716更新.xlsx"
-    
+
     # 检查文件是否存在
     if os.path.exists(excel_path):
         # 加载Excel数据
         if "excel_data" not in st.session_state:
             st.session_state.excel_data = load_excel_data(excel_path)
-        
+
         df = st.session_state.excel_data
-        
+
         if not df.empty:
             # 显示表格信息
             st.info(f"📋 已加载 {len(df)} 行数据，共 {len(df.columns)} 列")
-            
+
             # 搜索功能
             col_search, col_clear = st.columns([3, 1])
-            
+
             with col_search:
                 excel_search = st.text_input(
                     "🔍 搜索Excel数据",
@@ -223,97 +225,198 @@ def main():
                     help="支持搜索任意列的内容，支持中文、拼音、法语等",
                     key="excel_search",
                 )
-            
+
             with col_clear:
                 if excel_search:
                     if st.button("🗑️ 清除搜索", help="清除搜索条件，显示所有数据"):
                         if "excel_search" in st.session_state:
                             del st.session_state.excel_search
                         st.rerun()
-            
+
+            # 时间码筛选功能
+            col_timecode, col_timecode_tip = st.columns([2, 2])
+            with col_timecode:
+                timecode_input = st.text_input(
+                    "⏱️ 时间码筛选 (24帧)",
+                    placeholder="如 00:01:23:12",
+                    help="输入24帧制时间码，只显示起始时间码大于该值的行",
+                    key="excel_timecode_filter",
+                )
+            with col_timecode_tip:
+                st.caption("格式: 时:分:秒:帧 (如 00:01:23:12)，留空不过滤")
+
+            def timecode_to_frames(tc: str) -> int:
+                """将时间码(00:00:00:00)转为帧数(24帧制)"""
+                try:
+                    h, m, s, f = [int(x) for x in tc.strip().split(":")]
+                    return ((h * 60 + m) * 60 + s) * 24 + f
+                except Exception:
+                    return -1
+
             # 过滤数据
+            filtered_df = df
+            # 时间码过滤
+            if timecode_input:
+                input_frames = timecode_to_frames(timecode_input)
+                if input_frames is None:
+                    st.warning("时间码格式错误，应为 00:00:00:00")
+                else:
+                    # 假设起始时间码在第一列（索引0）
+                    def row_timecode_gt(row):
+                        tc = str(row.iloc[0]) if len(row) > 0 else ""
+                        tc_frames = timecode_to_frames(tc)
+                        return tc_frames is not None and tc_frames > input_frames
+
+                    filtered_df = filtered_df[
+                        filtered_df.apply(row_timecode_gt, axis=1)
+                    ]
+
+            # 搜索功能
             if excel_search:
                 # 在所有列中搜索
-                filtered_df = df[df.apply(
-                    lambda row: any(
-                        excel_search.lower() in str(cell).lower() 
-                        for cell in row if pd.notna(cell)
-                    ), axis=1
-                )]
-                
+                filtered_df = filtered_df[
+                    filtered_df.apply(
+                        lambda row: any(
+                            excel_search.lower() in str(cell).lower()
+                            for cell in row
+                            if pd.notna(cell)
+                        ),
+                        axis=1,
+                    )
+                ]
+
                 if not filtered_df.empty:
-                    st.success(f"🔍 搜索 '{excel_search}' 找到 {len(filtered_df)} 行匹配数据")
+                    st.success(
+                        f"🔍 搜索 '{excel_search}' 找到 {len(filtered_df)} 行匹配数据"
+                    )
                 else:
                     st.warning(f"🔍 搜索 '{excel_search}' 没有找到匹配的数据")
             else:
                 filtered_df = df
                 st.info("💡 输入搜索关键词来过滤数据，避免页面卡顿")
-            
+
             # 显示表格（可点击）
             if not filtered_df.empty:
                 st.subheader("点击行选择数据")
-                
-                # 限制显示行数，避免页面卡顿
+
+                # 默认显示2行，支持展开/折叠
+                default_display_rows = 2
                 max_display_rows = 50
-                if len(filtered_df) > max_display_rows:
-                    st.warning(f"⚠️ 搜索结果较多，仅显示前 {max_display_rows} 行。请使用更具体的搜索条件。")
-                    display_df = filtered_df.head(max_display_rows)
+                total_rows = len(filtered_df)
+
+                # 展开/折叠状态
+                if "excel_expanded" not in st.session_state:
+                    st.session_state.excel_expanded = False
+
+                # 只在有超过2行时显示展开按钮
+                if total_rows > default_display_rows:
+                    col_expand, col_info = st.columns([1, 3])
+                    with col_expand:
+                        if st.button(
+                            (
+                                "📖 展开全部"
+                                if not st.session_state.excel_expanded
+                                else "📚 折叠"
+                            ),
+                            help="展开或折叠表格数据",
+                        ):
+                            st.session_state.excel_expanded = (
+                                not st.session_state.excel_expanded
+                            )
+                            st.rerun()
+                    with col_info:
+                        if st.session_state.excel_expanded:
+                            if total_rows > max_display_rows:
+                                st.info(
+                                    f"📊 显示前 {max_display_rows} 行，共 {total_rows} 行数据。请使用搜索进一步缩小范围。"
+                                )
+                            else:
+                                st.info(f"📊 显示全部 {total_rows} 行数据")
+                        else:
+                            st.info(
+                                f"📊 默认仅显示前 {default_display_rows} 行，共 {total_rows} 行数据"
+                            )
+
+                # 决定实际显示的DataFrame
+                if st.session_state.excel_expanded:
+                    if total_rows > max_display_rows:
+                        display_df = filtered_df.head(max_display_rows)
+                    else:
+                        display_df = filtered_df
                 else:
-                    display_df = filtered_df
-                
+                    display_df = filtered_df.head(default_display_rows)
+
                 # 为每行添加点击功能
                 for index, row in display_df.iterrows():
                     # 创建行容器
                     with st.container():
                         col1, col2, col3, col4, col5 = st.columns([1, 2, 2, 2, 3])
-                        
+
                         with col1:
                             # 第一列：序号（去掉冒号）
                             first_col = str(row.iloc[0]) if len(row) > 0 else ""
                             first_col_clean = first_col.replace(":", "").strip()
                             st.write(f"**{first_col_clean}**")
-                        
+
                         with col2:
                             # 第二列
                             second_col = str(row.iloc[1]) if len(row) > 1 else ""
-                            st.write(second_col[:50] + "..." if len(second_col) > 50 else second_col)
-                        
+                            st.write(
+                                second_col[:50] + "..."
+                                if len(second_col) > 50
+                                else second_col
+                            )
+
                         with col3:
                             # 第三列（中文，用于生成拼音）
                             third_col = str(row.iloc[2]) if len(row) > 2 else ""
-                            st.write(third_col[:50] + "..." if len(third_col) > 50 else third_col)
-                        
+                            st.write(
+                                third_col[:50] + "..."
+                                if len(third_col) > 50
+                                else third_col
+                            )
+
                         with col4:
                             # 第四列
                             fourth_col = str(row.iloc[3]) if len(row) > 3 else ""
-                            st.write(fourth_col[:50] + "..." if len(fourth_col) > 50 else fourth_col)
-                        
+                            st.write(
+                                fourth_col[:50] + "..."
+                                if len(fourth_col) > 50
+                                else fourth_col
+                            )
+
                         with col5:
                             # 第五列（测试文本）
                             fifth_col = str(row.iloc[4]) if len(row) > 4 else ""
                             fifth_col = fifth_col + "Ne t'inquiète pas"
-                            st.write(fifth_col[:80] + "..." if len(fifth_col) > 80 else fifth_col)
-                        
+                            st.write(
+                                fifth_col[:80] + "..."
+                                if len(fifth_col) > 80
+                                else fifth_col
+                            )
+
                         # 添加点击按钮
-                        if st.button(f"🎯 选择第 {index + 1} 行", key=f"select_row_{index}"):
+                        if st.button(
+                            f"🎯 选择第 {index + 1} 行", key=f"select_row_{index}"
+                        ):
                             # 处理点击事件
                             # 1. 将第三列转换为拼音并搜索音色
                             pinyin_text = convert_to_pinyin(third_col)
                             if pinyin_text:
                                 # 设置搜索关键词
                                 st.session_state.test_voice_search = pinyin_text
-                            
+
                             # 2. 将第五列填入测试文本
                             st.session_state.test_text = fifth_col
-                            
+
                             # 3. 保存第一列信息用于文件名
                             st.session_state.file_prefix = first_col_clean
-                            
+
                             # 跳转到测试音色标签页
                             st.session_state.active_tab = "测试音色"
                             st.success(f"已选择第 {index + 1} 行数据")
                             st.rerun()
-                        
+
                         st.divider()
             else:
                 st.info("没有数据可显示，请尝试其他搜索条件")
@@ -325,28 +428,28 @@ def main():
 
     # 侧边栏配置
     with st.sidebar:
-        st.header("🔧 配置")
 
-        api_key = st.text_input(
-            "API Key",
-            type="password",
-            help="输入你的 MiniMax API Key",
-            value=os.environ.get("MINIMAX_API_KEY", ""),
-        )
+        with st.expander("🔧 配置", expanded=False):
+            api_key = st.text_input(
+                "API Key",
+                type="password",
+                help="输入你的 MiniMax API Key",
+                value=os.environ.get("MINIMAX_API_KEY", ""),
+            )
 
-        group_id = st.text_input(
-            "Group ID",
-            help="输入你的 Group ID",
-            value=os.environ.get("MINIMAX_GROUP_ID", ""),
-        )
+            group_id = st.text_input(
+                "Group ID",
+                help="输入你的 Group ID",
+                value=os.environ.get("MINIMAX_GROUP_ID", ""),
+            )
 
-        if st.button("🔗 连接", type="primary"):
-            if api_key and group_id:
-                if voice_manager.init_client(api_key, group_id):
-                    st.success("连接成功！")
-                    st.session_state.connected = True
-            else:
-                st.error("请填写 API Key 和 Group ID")
+            if st.button("🔗 连接", type="primary"):
+                if api_key and group_id:
+                    if voice_manager.init_client(api_key, group_id):
+                        st.success("连接成功！")
+                        st.session_state.connected = True
+                else:
+                    st.error("请填写 API Key 和 Group ID")
 
         st.markdown("---")
 
@@ -370,11 +473,35 @@ def main():
     # 标签页1: 测试音色
     with tab1:
         st.header("🎤 测试音色")
-        
+
+        # 处理快速测试跳转
+        if st.session_state.get("switch_to_test_tab", False) and st.session_state.get(
+            "quick_test_voice"
+        ):
+            st.success(
+                f"🎯 已跳转到测试页面，准备测试音色: {st.session_state.quick_test_voice}"
+            )
+            # 清除跳转标志，但保留音色ID
+            st.session_state.switch_to_test_tab = False
+
+        # 显示快速测试状态和清除按钮
+        if st.session_state.get("quick_test_voice"):
+            col_status, col_clear = st.columns([3, 1])
+            with col_status:
+                st.info(
+                    f"🎯 快速测试模式：已选择音色 {st.session_state.quick_test_voice}"
+                )
+            with col_clear:
+                if st.button("🗑️ 清除快速测试", help="清除快速测试状态"):
+                    del st.session_state.quick_test_voice
+                    st.rerun()
+
         # 显示当前选择的数据状态
         if "file_prefix" in st.session_state and st.session_state.file_prefix:
-            st.info(f"📋 当前选择: {st.session_state.file_prefix} | 搜索关键词: {st.session_state.get('test_voice_search', '无')}")
-            
+            st.info(
+                f"📋 当前选择: {st.session_state.file_prefix} | 搜索关键词: {st.session_state.get('test_voice_search', '无')}"
+            )
+
             # 添加清除选择按钮
             if st.button("🗑️ 清除选择", help="清除当前选择的数据"):
                 # 清除所有相关状态
@@ -393,7 +520,7 @@ def main():
             with col1:
                 # 搜索音色
                 col_search, col_clear = st.columns([3, 1])
-                
+
                 with col_search:
                     search_voice = st.text_input(
                         "🔍 搜索音色",
@@ -402,7 +529,7 @@ def main():
                         key="test_voice_search",
                         value=st.session_state.get("test_voice_search", ""),
                     )
-                
+
                 with col_clear:
                     if search_voice:
                         if st.button("🗑️ 清除", help="清除搜索条件，显示所有音色"):
@@ -410,24 +537,30 @@ def main():
                             if "test_voice_search" in st.session_state:
                                 del st.session_state.test_voice_search
                             st.rerun()
-                
+
                 # 过滤音色
                 if search_voice:
                     filtered_test_voices = [
-                        voice for voice in voices
-                        if search_voice.lower() in voice.voice_id.lower() or 
-                           (voice.description and search_voice.lower() in voice.description.lower())
+                        voice
+                        for voice in voices
+                        if search_voice.lower() in voice.voice_id.lower()
+                        or (
+                            voice.description
+                            and search_voice.lower() in voice.description[0].lower()
+                        )
                     ]
                 else:
                     filtered_test_voices = voices
-                
+
                 # 显示搜索状态
                 if search_voice:
                     if filtered_test_voices:
-                        st.success(f"🔍 搜索 '{search_voice}' 找到 {len(filtered_test_voices)} 个匹配音色")
+                        st.success(
+                            f"🔍 搜索 '{search_voice}' 找到 {len(filtered_test_voices)} 个匹配音色"
+                        )
                     else:
                         st.warning(f"🔍 搜索 '{search_voice}' 没有找到匹配的音色")
-                
+
                 # 选择音色
                 voice_options = {
                     f"{v.voice_id} ({v.description or '未命名'})": v.voice_id
@@ -437,7 +570,9 @@ def main():
                 if voice_options:
                     # 根据搜索结果调整下拉菜单的提示
                     if search_voice and filtered_test_voices:
-                        selectbox_label = f"🎯 选择音色 (找到 {len(filtered_test_voices)} 个匹配结果)"
+                        selectbox_label = (
+                            f"🎯 选择音色 (找到 {len(filtered_test_voices)} 个匹配结果)"
+                        )
                         selectbox_help = f"搜索结果：'{search_voice}' 匹配到 {len(filtered_test_voices)} 个音色"
                     elif search_voice and not filtered_test_voices:
                         selectbox_label = "❌ 选择音色 (无匹配结果)"
@@ -445,17 +580,34 @@ def main():
                     else:
                         selectbox_label = "选择音色"
                         selectbox_help = "选择要测试的音色"
-                    
+
+                    # 处理快速测试音色的自动选择
+                    quick_test_voice_id = st.session_state.get("quick_test_voice")
+                    default_index = 0
+
+                    if quick_test_voice_id:
+                        # 查找快速测试音色在选项中的索引
+                        for i, (display_name, voice_id) in enumerate(
+                            voice_options.items()
+                        ):
+                            if voice_id == quick_test_voice_id:
+                                default_index = i
+                                break
+
                     selected_voice = st.selectbox(
                         selectbox_label,
                         options=list(voice_options.keys()),
+                        index=default_index,
                         help=selectbox_help,
                     )
 
                     # 测试文本
                     test_text = st.text_area(
                         "测试文本",
-                        value=st.session_state.get("test_text", "你好，这是一个测试音频。Hello, this is a test audio."),
+                        value=st.session_state.get(
+                            "test_text",
+                            "你好，这是一个测试音频。Hello, this is a test audio.",
+                        ),
                         height=100,
                         help="输入要转换为语音的文本",
                     )
@@ -525,7 +677,9 @@ def main():
 
                     # 将"无"转换为None
                     emotion_value = None if emotion == "无" else emotion
-                    language_boost_value = None if language_boost == "无" else language_boost
+                    language_boost_value = (
+                        None if language_boost == "无" else language_boost
+                    )
 
                     if st.button("🎵 生成测试音频", type="primary"):
                         if test_text.strip():
@@ -558,18 +712,24 @@ def main():
                                         # 显示音频播放器
                                         st.audio(tmp_path, format="audio/mp3")
 
+                                        # 清除快速测试状态
+                                        if "quick_test_voice" in st.session_state:
+                                            del st.session_state.quick_test_voice
+
                                         safe_test_text = generate_safe_filename(
                                             test_text
                                         )
                                         # 提供下载链接
                                         with open(tmp_path, "rb") as f:
                                             # 获取文件名前缀
-                                            file_prefix = st.session_state.get("file_prefix", "")
+                                            file_prefix = st.session_state.get(
+                                                "file_prefix", ""
+                                            )
                                             if file_prefix:
                                                 download_filename = f"{file_prefix}_{voice_options[selected_voice]}_{safe_test_text}.mp3"
                                             else:
                                                 download_filename = f"{voice_options[selected_voice]}_{safe_test_text}.mp3"
-                                            
+
                                             st.download_button(
                                                 label="📥 下载音频",
                                                 data=f.read(),
@@ -625,55 +785,122 @@ def main():
         if not voices:
             st.info("暂无克隆音色")
         else:
-            # 创建数据表格
-            voice_data = []
-            for voice in voices:
-                voice_data.append(
-                    {
-                        "音色ID": voice.voice_id,
-                        "创建时间": voice.created_time,
-                        "操作": f"删除_{voice.voice_id}",  # 用于按钮标识
-                    }
+            # 初始化多选状态
+            if "selected_voices" not in st.session_state:
+                st.session_state.selected_voices = set()
+            if "show_bulk_confirm" not in st.session_state:
+                st.session_state.show_bulk_confirm = False
+
+            # 排序功能
+            col_sort, col_bulk = st.columns([2, 2])
+            with col_sort:
+                sort_by = st.selectbox(
+                    "🔄 排序方式",
+                    options=[
+                        "创建时间 (最新)",
+                        "创建时间 (最旧)",
+                        "音色ID (A-Z)",
+                        "音色ID (Z-A)",
+                        "描述 (A-Z)",
+                        "描述 (Z-A)",
+                    ],
+                    help="选择音色列表的排序方式",
                 )
+            with col_bulk:
+                if st.button("📋 全选/取消全选", help="全选或取消全选所有音色"):
+                    if len(st.session_state.selected_voices) == len(voices):
+                        st.session_state.selected_voices.clear()
+                    else:
+                        st.session_state.selected_voices = {
+                            voice.voice_id for voice in voices
+                        }
+                    st.rerun()
+                if st.session_state.selected_voices:
+                    if st.button(
+                        f"🗑️ 批量删除选中({len(st.session_state.selected_voices)})",
+                        type="primary",
+                    ):
+                        st.session_state.show_bulk_confirm = True
 
-            # 显示音色列表
-            for i, voice in enumerate(voices):
+            # 批量删除确认
+            if st.session_state.show_bulk_confirm:
+                st.warning(
+                    f"确认要删除选中的 {len(st.session_state.selected_voices)} 个音色吗？"
+                )
+                col_confirm, col_cancel = st.columns(2)
+                with col_confirm:
+                    if st.button("✅ 确认批量删除", type="primary"):
+                        success_count = 0
+                        for voice_id in list(st.session_state.selected_voices):
+                            if voice_manager.delete_voice(voice_id):
+                                success_count += 1
+                        st.success(f"成功删除 {success_count} 个音色")
+                        st.session_state.selected_voices.clear()
+                        st.session_state.show_bulk_confirm = False
+                        st.rerun()
+                with col_cancel:
+                    if st.button("❌ 取消"):
+                        st.session_state.show_bulk_confirm = False
+                        st.rerun()
+
+            # 排序音色列表
+            sorted_voices = voices.copy()
+            if sort_by == "创建时间 (最新)":
+                sorted_voices.sort(key=lambda x: x.created_time, reverse=True)
+            elif sort_by == "创建时间 (最旧)":
+                sorted_voices.sort(key=lambda x: x.created_time, reverse=False)
+            elif sort_by == "音色ID (A-Z)":
+                sorted_voices.sort(key=lambda x: x.voice_id, reverse=False)
+            elif sort_by == "音色ID (Z-A)":
+                sorted_voices.sort(key=lambda x: x.voice_id, reverse=True)
+            elif sort_by == "描述 (A-Z)":
+                sorted_voices.sort(key=lambda x: (x.description or ""), reverse=False)
+            elif sort_by == "描述 (Z-A)":
+                sorted_voices.sort(key=lambda x: (x.description or ""), reverse=True)
+
+            st.subheader(f"音色列表 ({len(sorted_voices)} 个)")
+            for i, voice in enumerate(sorted_voices):
                 with st.container():
-                    col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 1, 1])
-
+                    col_check, col1, col2, col3, col4, col5 = st.columns(
+                        [0.5, 2, 2, 2, 1, 1]
+                    )
+                    with col_check:
+                        is_checked = voice.voice_id in st.session_state.selected_voices
+                        if st.checkbox(
+                            "", value=is_checked, key=f"check_{voice.voice_id}"
+                        ):
+                            st.session_state.selected_voices.add(voice.voice_id)
+                        else:
+                            st.session_state.selected_voices.discard(voice.voice_id)
                     with col1:
                         st.write(f"**{voice.voice_id}**")
-
                     with col2:
                         st.write(voice.description or "未命名")
-
                     with col3:
                         st.write(voice.created_time)
-
                     with col4:
                         if st.button("🗑️ 删除", key=f"delete_{voice.voice_id}"):
                             st.session_state.confirm_delete_id = voice.voice_id
-
-                            # if st.button(
-                            #     f"确认删除 {voice.voice_id}?",
-                            #     key=f"confirm_delete_{voice.voice_id}",
-                            # ):
-                            #     voice_manager.delete_voice(voice.voice_id)
-                            #     st.rerun()
-
+                    with col5:
+                        if st.button(
+                            "🎤 测试",
+                            key=f"test_{voice.voice_id}",
+                            help="快速测试此音色",
+                        ):
+                            st.session_state.quick_test_voice = voice.voice_id
+                            st.session_state.switch_to_test_tab = True
+                            st.rerun()
                     if st.session_state.confirm_delete_id == voice.voice_id:
                         st.warning(f"确认要删除 {voice.voice_id} 吗？")
-                        col1, col2 = st.columns(2)
-
-                        with col1:
+                        col_c1, col_c2 = st.columns(2)
+                        with col_c1:
                             if st.button(
                                 "✅ 确认删除", key=f"confirm_{voice.voice_id}"
                             ):
                                 voice_manager.delete_voice(voice.voice_id)
-                                st.session_state.confirm_delete_id = None  # 重置状态
+                                st.session_state.confirm_delete_id = None
                                 st.rerun()
-
-                        with col2:
+                        with col_c2:
                             if st.button("❌ 取消", key=f"cancel_{voice.voice_id}"):
                                 st.session_state.confirm_delete_id = None
                     st.divider()
@@ -760,17 +987,27 @@ def main():
 
         # 过滤音色
         if search_term:
-            filtered_voices = [
-                voice
-                for voice in system_voices
-                if search_term.lower() in voice.value.lower()
-                or search_term.lower() in voice.name.lower()
-                or (
-                    hasattr(voice, "description")
-                    and voice.description
-                    and search_term.lower() in voice.description.lower()
-                )
-            ]
+            filtered_voices = []
+            search_lower = search_term.lower()  # 提前转换大小写避免重复计算
+
+            for voice in system_voices:
+                # 检查主要属性
+                matches_value = search_lower in voice.value.lower()
+                matches_name = search_lower in voice.name.lower()
+
+                # 检查可选属性
+                matches_description = False
+                if hasattr(voice, "description") and voice.description:
+                    # 只检查第一个描述（根据原逻辑）
+                    if (
+                        voice.description[0]
+                        and search_lower in voice.description[0].lower()
+                    ):
+                        matches_description = True
+
+                # 任一条件匹配则包含
+                if matches_value or matches_name or matches_description:
+                    filtered_voices.append(voice)
         else:
             filtered_voices = system_voices
 
@@ -903,7 +1140,9 @@ def main():
 
                 # 将"无"转换为None
                 emotion_value = None if emotion == "无" else emotion
-                language_boost_value = None if language_boost == "无" else language_boost
+                language_boost_value = (
+                    None if language_boost == "无" else language_boost
+                )
 
                 if st.button("🎵 生成测试音频", type="primary", key="sys_generate"):
                     if test_text.strip():
