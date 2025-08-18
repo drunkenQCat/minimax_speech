@@ -1,42 +1,22 @@
-"""
-测试音色页面
-"""
+"""测试音色页面"""
 
-import streamlit as st
-import os
-import json
-import tempfile
-import time
-import re
-import hashlib
-import binascii
-
-import numpy as np
-import pandas as pd
-import io
-import openpyxl
-from pypinyin import pinyin, Style
-
-import os
-import tempfile
-import streamlit as st
 import sys
 from pathlib import Path
 
+import streamlit as st
 
 # 添加components目录到Python路径
 components_dir = Path(__file__).parent.parent / "components"
 sys.path.insert(0, str(components_dir))
 
-from components.voice_manager import VoiceManager
 from components.audio_parameters import render_audio_parameters
 from components.clone_voices_manager import render_clone_voices_manager
 from components.system_voices_manager import render_system_voices_manager
-from utils import generate_safe_filename
+from components.voice_manager import VoiceManager
 
 
-def render_test_voice(voice_manager: VoiceManager):
-    """渲染测试音色页面"""
+def render_test_voice(voice_manager: VoiceManager) -> None:
+    """渲染测试音色页面."""
     st.header("🎤 测试音色")
 
     # 处理快速测试跳转
@@ -82,6 +62,7 @@ def render_test_voice(voice_manager: VoiceManager):
             render_system_voices_manager(voice_manager)
         else:
             render_clone_voices_manager(voice_manager)
+        # render_system_voices_manager(voice_manager)
 
         st.markdown("### 第二步：输入测试文本")
         st.text_area(

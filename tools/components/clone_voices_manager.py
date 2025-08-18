@@ -10,7 +10,7 @@ def render_clone_voices_manager(voice_manager: VoiceManager):
         st.info("暂无可用音色进行测试")
         return
 
-    st.subheader("克隆音色")
+    st.subheader("🧬 克隆音色")
     col_search, col_clear = st.columns([3, 1])
 
     with col_search:
@@ -91,7 +91,6 @@ def render_clone_voices_manager(voice_manager: VoiceManager):
         def update_selected_voice():
             """更新选中的音色"""
             voice_id = st.session_state.get("selected_clone_voice_num", "")
-            __import__("ipdb").set_trace()
             voice_manager.current_voice = (
                 st.session_state.voice_options[voice_id] if voice_id else ""
             )

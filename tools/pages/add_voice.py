@@ -46,7 +46,7 @@ def render_add_voice(voice_manager: VoiceManager):
             # 高级选项
             with st.expander("高级选项"):
                 need_noise_reduction = st.checkbox("降噪", value=False)
-                need_volume_normalization = st.checkbox("音量标准化", value=False)
+                need_volume_normalization = st.checkbox("音量标准化", value=True)
                 accuracy = st.slider("文本验证精度", 0.0, 1.0, 0.7, 0.1)
                 model = st.selectbox(
                     "模型",
@@ -57,7 +57,12 @@ def render_add_voice(voice_manager: VoiceManager):
                         "speech-01-turbo",
                     ],
                 )
-                preview_text = st.text_area("预览文本", help="用于验证音色的文本")
+                preview_text = st.text_area(
+                    "预览文本",
+                    "您好，这是一段测试音频。hello, this is a test audio.",
+                    help="用于验证音色的文本",
+                    disabled=True,
+                )
 
             if st.button("🚀 开始克隆", type="primary"):
                 if voice_id and uploaded_file:
@@ -119,11 +124,14 @@ def render_add_voice(voice_manager: VoiceManager):
         
         **支持的音频格式：**
         - WAV, MP3, M4A, FLAC
+        - 仅支持单声道音频
+        - 文件大小限制：最大**20MB**
         
         **音色ID要求：**
         - 至少8位字符
         - 必须以字母开头
         - 必须包含字母和数字
+        - **示例**: `voice1234`, `test_voice_01`
         
         **克隆过程：**
         1. 上传音频文件
@@ -136,4 +144,3 @@ def render_add_voice(voice_manager: VoiceManager):
         - 可以在音色列表中查看状态
         """
         )
-

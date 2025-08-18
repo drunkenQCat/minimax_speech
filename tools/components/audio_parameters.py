@@ -20,7 +20,6 @@ def render_audio_parameters(voice_manager: VoiceManager):
     selected_voice_num = st.session_state.get("selected_clone_voice_num", "")
     voice_id = voice_options.get(selected_voice_num, "") if voice_options else ""
     # 音频参数
-    st.subheader("音频参数")
 
     col_a, col_b = st.columns(2)
     with col_a:

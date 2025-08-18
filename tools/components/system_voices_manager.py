@@ -22,7 +22,7 @@ def render_system_voices_manager(voice_manager: VoiceManager):
             st.session_state.voice_options[voice_id] if voice_id else ""
         )
 
-    st.header("🎭 系统音色测试")
+    st.subheader("🎭 系统音色测试")
 
     # 初始化session_state中的系统音色
     if "system_voices" not in st.session_state:

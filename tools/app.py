@@ -48,7 +48,9 @@ def main():
     if not voice_manager.client:
         st.info("请在侧边栏配置 API Key 和 Group ID 并连接")
         return
-    with st.expander("📊 法语剧本数据", expanded=False):
+    with st.expander("📊 剧本数据", expanded=False):
+        # st.markdown("正在开发中...")
+        st.markdown("这里可以查看和管理剧本数据，包括音色列表、批量上传等功能。")
         render_excel_manager()
 
     if st.button("🔄 刷新音色列表"):
@@ -60,15 +62,15 @@ def main():
 
     # 创建标签页
     tab1, tab3 = st.tabs(["🎤 测试音色", "➕ 添加音色"])
-    # 标签页1: 音色列表
+    # 标签页1: 测试音色
     with tab1:
         render_test_voice(voice_manager)
 
-    # 标签页2: 测试音色
     # with tab2:
     #     render_voice_list(voice_manager)
     # 标签页3: 添加音色
     with tab3:
+        # st.markdown("正在开发中...")
         render_add_voice(voice_manager)
 
 

@@ -65,7 +65,7 @@ markers = [
 [tool.black]
 line-length = 88
 target-version = ['py310']
-include = '\.pyi?$'
+include = '\.pyi?$' 
 extend-exclude = '''
 /(
   # directories
@@ -108,3 +108,29 @@ module = [
     "requests.*"
 ]
 ignore_missing_imports = true
+
+[tool.ruff]
+# Match the line length from the black configuration.
+line-length = 88
+# Match the target version from the black configuration.
+target-version = "py310"
+
+[tool.ruff.lint]
+# Enable a broad set of rules for stricter checking.
+# E, F, W: Standard pycodestyle and Pyflakes
+# I: isort
+# UP: pyupgrade
+# ANN: flake8-annotations (for type hint enforcement)
+# TID: flake8-typing-imports (for typing import best practices)
+# D: pydocstyle (for docstring conventions)
+select = ["E", "F", "W", "I", "UP", "ANN", "TID", "D"]
+
+# Ignore some rules that can be noisy or conflict with other tools/styles.
+# D100, D101, D102, D103, D104, D105, D106, D107: Missing docstrings (can be added gradually)
+# ANN101: Missing type annotation for `self` in method
+# ANN102: Missing type annotation for `cls` in classmethod
+ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107", "ANN101", "ANN102"]
+
+[tool.ruff.format]
+# Like Black, but faster.
+quote-style = "double"
