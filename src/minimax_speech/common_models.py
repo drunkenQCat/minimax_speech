@@ -1,12 +1,17 @@
-from typing import Optional, Literal
-from pydantic import BaseModel, Field
+from typing import Literal
 
+from pydantic import BaseModel, Field
 
 ValidSr = Literal[8000, 16000, 22050, 24000, 32000, 44100]
 ValidBitRate = Literal[32000, 64000, 128000, 256000]
 ValidAudioFormat = Literal["mp3", "pcm", "flac"]
 ValidModels = Literal[
-    "speech-02-hd", "speech-01-turbo", "speech-01-hd", "speech-01-turbo"
+    "speech-2.5-hd-preview",
+    "speech-2.5-turbo-preview",
+    "speech-02-hd",
+    "speech-02-turbo",
+    "speech-01-hd",
+    "speech-01-turbo",
 ]
 ValidDeleteVoiceType = Literal["voice_generation", "voice_cloning"]
 ValidEmotions = Literal[
@@ -18,7 +23,7 @@ class BaseResponse(BaseModel):
     """基础响应模型"""
 
     status_code: int = Field(..., description="状态码")
-    status_msg: Optional[str] = Field(..., description="状态消息")
+    status_msg: str | None = Field(..., description="状态消息")
 
     @property
     def is_success(self) -> bool:

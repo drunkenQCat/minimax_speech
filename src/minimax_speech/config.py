@@ -1,9 +1,7 @@
-"""
-MiniMax Speech API 配置
+"""MiniMax Speech API 配置
 """
 
 import os
-from typing import Optional
 
 
 class APIConfig:
@@ -30,11 +28,11 @@ class APIConfig:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        group_id: Optional[str] = None,
-        base_url: Optional[str] = None,
-        timeout: Optional[int] = None,
-        max_retries: Optional[int] = None,
+        api_key: str | None = None,
+        group_id: str | None = None,
+        base_url: str | None = None,
+        timeout: int | None = None,
+        max_retries: int | None = None,
     ):
         self.api_key = api_key or self._get_api_key_from_env()
         self.group_id = group_id or self._get_group_id_from_env()
@@ -72,12 +70,12 @@ class APIConfig:
         return f"{self.base_url}{self.VOICE_DELETE_ENDPOINT}?GroupId={self.group_id}"
 
     @staticmethod
-    def _get_api_key_from_env() -> Optional[str]:
+    def _get_api_key_from_env() -> str | None:
         """从环境变量获取API密钥"""
         return os.getenv("MINIMAX_API_KEY")
 
     @staticmethod
-    def _get_group_id_from_env() -> Optional[str]:
+    def _get_group_id_from_env() -> str | None:
         """从环境变量获取API密钥"""
         return os.getenv("MINIMAX_GROUP_ID")
 

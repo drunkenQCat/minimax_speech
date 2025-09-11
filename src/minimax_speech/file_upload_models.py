@@ -1,5 +1,4 @@
-"""
-MiniMax File Upload API 数据模型
+"""MiniMax File Upload API 数据模型
 """
 
 from pydantic import BaseModel, Field

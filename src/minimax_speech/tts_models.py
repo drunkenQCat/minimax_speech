@@ -1,13 +1,18 @@
-"""
-MiniMax Speech API 数据模型
+"""MiniMax Speech API 数据模型
 """
 
 from enum import Enum
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, confloat, conint
 
-from .common_models import BaseResponse, ValidSr, ValidBitRate, ValidAudioFormat, ValidModels
+from .common_models import (
+    BaseResponse,
+    ValidAudioFormat,
+    ValidBitRate,
+    ValidModels,
+    ValidSr,
+)
 
 
 class Language(str, Enum):
@@ -88,17 +93,15 @@ class VoiceSetting(BaseModel):
     speed: confloat(ge=0.5, le=2) = 1.0  # type: ignore[reportInvalidTypeForm]
     vol: confloat(gt=0, le=10) = 1.0  # type: ignore[reportInvalidTypeForm]
     pitch: conint(ge=-12, le=12) = 0  # type: ignore[reportInvalidTypeForm]
-    voice_id: Optional[str | Voice] = None
-    emotion: Optional[
-        Literal["happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"]
-    ] = None
+    voice_id: str | Voice | None = None
+    emotion: Literal["happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"] | None = None
     english_normalization: bool = False
 
 
 class AudioSetting(BaseModel):
-    sample_rate: Optional[ValidSr] = 32000
-    bitrate: Optional[ValidBitRate] = 128000
-    format: Optional[ValidAudioFormat] = "mp3"
+    sample_rate: ValidSr | None = 32000
+    bitrate: ValidBitRate | None = 128000
+    format: ValidAudioFormat | None = "mp3"
     channel: AudioChannels = AudioChannels.MONO
 
     class AudioSetting:
@@ -106,7 +109,7 @@ class AudioSetting(BaseModel):
 
 
 class PronunciationDict(BaseModel):
-    tone: Optional[list[str]] = None
+    tone: list[str] | None = None
 
 
 class TimberWeight(BaseModel):
@@ -119,10 +122,10 @@ class T2ARequest(BaseModel):
     text: str = Field(..., max_length=5000)
     voice_setting: VoiceSetting
     audio_setting: AudioSetting = AudioSetting()
-    pronunciation_dict: Optional[PronunciationDict] = None
-    timber_weights: Optional[list[TimberWeight]] = None
+    pronunciation_dict: PronunciationDict | None = None
+    timber_weights: list[TimberWeight] | None = None
     stream: bool = False
-    language_boost: Optional[Language] = None
+    language_boost: Language | None = None
     subtitle_enable: bool = False
     output_format: Literal["url", "hex"] = "hex"
 
@@ -135,7 +138,7 @@ class T2AData(BaseModel):
         1,
         description="目前生成状态码。1代表现在音频流正在生成，2代表音频流已经生成完成",
     )
-    ced: Optional[str] = Field(..., description="不知道啥")
+    ced: str | None = Field(..., description="不知道啥")
 
 
 class ErrorResponse(BaseModel):
@@ -143,7 +146,7 @@ class ErrorResponse(BaseModel):
 
     error_code: str = Field(..., description="错误代码")
     error_message: str = Field(..., description="错误信息")
-    request_id: Optional[str] = Field(None, description="请求ID")
+    request_id: str | None = Field(None, description="请求ID")
 
 
 class APIStatus(str, Enum):

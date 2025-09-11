@@ -1,37 +1,36 @@
-"""
-MiniMax Speech API 同步客户端
+"""MiniMax Speech API 同步客户端
 """
 
 import json
-from typing import Optional
-import requests
 from pathlib import Path
+
+import requests
 
 from minimax_speech import voice_query_models
 from minimax_speech.voice_query_models import VoiceListResponse, VoiceType
+
+from .common_models import (
+    ValidAudioFormat,
+    ValidBitRate,
+    ValidDeleteVoiceType,
+    ValidEmotions,
+    ValidModels,
+    ValidSr,
+)
+from .config import APIConfig
+from .exceptions import MiniMaxAPIError, MiniMaxTimeoutError
 from .file_upload_models import FileUploadResponse
+from .tts_models import (
+    Language,
+    T2ARequest,
+    T2AResponse,
+    Voice,
+)
 from .voice_clone_models import (
     VoiceCloneRequest,
     VoiceCloneResponse,
     VoiceDeleteResponse,
 )
-
-from .config import APIConfig
-from .tts_models import (
-    T2ARequest,
-    T2AResponse,
-    Voice,
-    Language,
-)
-from .common_models import (
-    ValidSr,
-    ValidBitRate,
-    ValidAudioFormat,
-    ValidEmotions,
-    ValidModels,
-    ValidDeleteVoiceType,
-)
-from .exceptions import MiniMaxAPIError, MiniMaxTimeoutError
 
 
 class MiniMaxSpeech:
@@ -39,11 +38,11 @@ class MiniMaxSpeech:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        group_id: Optional[str] = None,
-        base_url: Optional[str] = None,
-        timeout: Optional[int] = None,
-        max_retries: Optional[int] = None,
+        api_key: str | None = None,
+        group_id: str | None = None,
+        base_url: str | None = None,
+        timeout: int | None = None,
+        max_retries: int | None = None,
     ):
         self.config = APIConfig(
             api_key=api_key,
@@ -57,8 +56,7 @@ class MiniMaxSpeech:
 
     # ====================== 查询音色列表 ======================
     def get_voice(self, voice_type: VoiceType = "all") -> VoiceListResponse:
-        """
-        获取语音列表
+        """获取语音列表
 
         Args:
             voice_type: 语音类型，可选值：
@@ -74,6 +72,7 @@ class MiniMaxSpeech:
         Raises:
             MiniMaxAPIError: API错误
             MiniMaxTimeoutError: 超时错误
+
         """
         # 使用正确的语音列表API端点
         url = self.config.voice_list_url
@@ -114,59 +113,58 @@ class MiniMaxSpeech:
             raise MiniMaxAPIError(f"Invalid JSON response: {str(e)}")
 
     def get_voice_slots(self) -> list[voice_query_models.VoiceSlot] | None:
-        """
-        获取语音槽位列表
+        """获取语音槽位列表
 
         Returns:
             list[VoiceSlot]: 语音槽位列表
+
         """
         response = self.get_voice("all")
         return response.voice_slots
 
     def get_system_voices(self) -> list[voice_query_models.SystemVoice] | None:
-        """
-        获取系统语音列表
+        """获取系统语音列表
 
         Returns:
             list[SystemVoice]: 系统语音列表
+
         """
         response = self.get_voice("system")
         return response.system_voice
 
     def get_cloned_voices(self) -> list[voice_query_models.VoiceCloning] | None:
-        """
-        获取克隆语音列表
+        """获取克隆语音列表
 
         Returns:
             list[VoiceCloning]: 克隆语音列表
+
         """
         response = self.get_voice("voice_cloning")
         return response.voice_cloning
 
     def get_generated_voices(self) -> list[voice_query_models.VoiceGeneration] | None:
-        """
-        获取生成的语音列表
+        """获取生成的语音列表
 
         Returns:
             list[VoiceGeneration]: 生成的语音列表
+
         """
         response = self.get_voice("voice_generation")
         return response.voice_generation
 
     def get_music_voices(self) -> list[voice_query_models.MusicGeneration] | None:
-        """
-        获取音乐生成语音列表
+        """获取音乐生成语音列表
 
         Returns:
             list[MusicGeneration]: 音乐生成语音列表
+
         """
         response = self.get_voice("music_generation")
         return response.music_generation
 
     # ====================== 上传文件 ======================
     def file_upload(self, input_file_path: str, purpose: str = "voice_clone") -> int:
-        """
-        上传文件
+        """上传文件
 
         Args:
             file_path: 文件路径
@@ -179,8 +177,8 @@ class MiniMaxSpeech:
             MiniMaxAPIError: API错误
             MiniMaxTimeoutError: 超时错误
             FileNotFoundError: 文件不存在
-        """
 
+        """
         # 检查文件是否存在
         file_path = Path(input_file_path)
         if not file_path.exists():
@@ -230,8 +228,7 @@ class MiniMaxSpeech:
 
     # ====================== 语音克隆 ======================
     def voice_clone(self, request: VoiceCloneRequest) -> VoiceCloneResponse:
-        """
-        语音克隆
+        """语音克隆
 
         Args:
             request: 语音克隆请求对象
@@ -242,6 +239,7 @@ class MiniMaxSpeech:
         Raises:
             MiniMaxAPIError: API错误
             MiniMaxTimeoutError: 超时错误
+
         """
         # 验证请求
         self._validate_voice_clone_request(request)
@@ -329,13 +327,12 @@ class MiniMaxSpeech:
         file_id: int,
         voice_id: str,
         need_noise_reduction: bool = False,
-        text: Optional[str] = None,
-        model: Optional[ValidModels] = None,
-        accuracy: Optional[float] = 0.7,
+        text: str | None = None,
+        model: ValidModels | None = None,
+        accuracy: float | None = 0.7,
         need_volume_normalization: bool = False,
     ) -> VoiceCloneResponse:
-        """
-        简化的语音克隆接口
+        """简化的语音克隆接口
 
         Args:
             file_id: 要克隆的文件ID
@@ -348,6 +345,7 @@ class MiniMaxSpeech:
 
         Returns:
             VoiceCloneResponse: 语音克隆响应对象
+
         """
         request = VoiceCloneRequest(
             file_id=file_id,
@@ -363,8 +361,7 @@ class MiniMaxSpeech:
 
     # ====================== 文本转语音 ======================
     def text_to_speech(self, request: T2ARequest) -> T2AResponse:
-        """
-        文本转语音
+        """文本转语音
 
         Args:
             request: T2A请求对象
@@ -375,6 +372,7 @@ class MiniMaxSpeech:
         Raises:
             MiniMaxAPIError: API错误
             MiniMaxTimeoutError: 超时错误
+
         """
         # 验证请求
         self._validate_t2a_request(request)
@@ -442,14 +440,13 @@ class MiniMaxSpeech:
         speed: float = 1.0,
         volume: float = 1.0,
         pitch: int = 0,
-        emotion: Optional[ValidEmotions] = None,
+        emotion: ValidEmotions | None = None,
         format: ValidAudioFormat = "mp3",
         sample_rate: ValidSr = 32000,
         bitrate: ValidBitRate = 128000,
-        language_boost: Optional[Language] = None,
+        language_boost: Language | None = None,
     ) -> T2AResponse:
-        """
-        简化的文本转语音接口
+        """简化的文本转语音接口
 
         Args:
             text: 要转换的文本
@@ -466,8 +463,9 @@ class MiniMaxSpeech:
 
         Returns:
             T2AResponse: 语音响应对象
+
         """
-        from .tts_models import VoiceSetting, AudioSetting, T2ARequest, Language
+        from .tts_models import AudioSetting, T2ARequest, VoiceSetting
 
         voice_setting = VoiceSetting(
             voice_id=voice_id, speed=speed, vol=volume, pitch=pitch, emotion=emotion
@@ -491,11 +489,11 @@ class MiniMaxSpeech:
     def voice_delete(
         self, voice_id: str, voice_type: ValidDeleteVoiceType = "voice_cloning"
     ) -> VoiceDeleteResponse:
-        """
-        删除语音
+        """删除语音
 
         Args:
             voice_id: 要删除的语音ID
+
         """
         url = self.config.voice_delete_url
         payload = {"voice_id": voice_id, "voice_type": voice_type}

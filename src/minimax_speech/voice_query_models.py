@@ -1,8 +1,8 @@
-"""
-MiniMax Voice API 数据模型
+"""MiniMax Voice API 数据模型
 """
 
-from typing import Literal, Optional
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from .common_models import BaseResponse
@@ -59,15 +59,15 @@ class MusicGeneration(BaseModel):
 class VoiceListResponse(BaseModel):
     """语音列表响应"""
 
-    voice_slots: Optional[list[VoiceSlot]] = Field(
+    voice_slots: list[VoiceSlot] | None = Field(
         description="订阅语音计划期间创建的所有语音"
     )
-    system_voice: Optional[list[SystemVoice]] = Field(description="所有可用的系统语音")
-    voice_cloning: Optional[list[VoiceCloning]] = Field(description="账户下的所有克隆语音")
-    voice_generation: Optional[list[VoiceGeneration]] = Field(
+    system_voice: list[SystemVoice] | None = Field(description="所有可用的系统语音")
+    voice_cloning: list[VoiceCloning] | None = Field(description="账户下的所有克隆语音")
+    voice_generation: list[VoiceGeneration] | None = Field(
         description="通过语音设计API创建的所有语音"
     )
-    music_generation: Optional[list[MusicGeneration]] = Field(
+    music_generation: list[MusicGeneration] | None = Field(
         description="通过音乐生成API创建的所有语音"
     )
     base_resp: BaseResponse = Field(..., description="基本响应信息")

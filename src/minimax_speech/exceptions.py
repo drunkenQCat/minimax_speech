@@ -1,5 +1,4 @@
-"""
-MiniMax Speech API 异常类
+"""MiniMax Speech API 异常类
 """
 
 

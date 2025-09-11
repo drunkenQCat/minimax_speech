@@ -1,5 +1,4 @@
-"""
-MiniMax Speech API Python 包
+"""MiniMax Speech API Python 包
 
 一个基于MiniMax API的Python语音处理包，支持文本转语音(T2A)功能。
 """
@@ -9,54 +8,48 @@ __author__ = "drunkenQCat"
 __email__ = "songjh123123@outlook.com"
 
 # 导出主要类
-from .client import MiniMaxSpeech
 from .async_client import AsyncMiniMaxSpeech
-from .tts_models import (
-    T2ARequest,
-    T2AData,
-    T2AResponse,
-    VoiceSetting,
-    AudioSetting,
-    Language,
-    Voice,
-    BaseResponse,
-    T2AExtra,
-    PronunciationDict,
-    TimberWeight
+from .client import MiniMaxSpeech
+from .config import LanguageConfig, VoiceConfig
+from .exceptions import (
+    MiniMaxAPIError,
+    MiniMaxAuthenticationError,
+    MiniMaxError,
+    MiniMaxQuotaExceededError,
+    MiniMaxRateLimitError,
+    MiniMaxTimeoutError,
+    MiniMaxValidationError,
 )
+from .file_upload_models import FileInfo, FileUploadResponse
+from .tts_models import (
+    AudioSetting,
+    BaseResponse,
+    Language,
+    PronunciationDict,
+    T2AData,
+    T2AExtra,
+    T2ARequest,
+    T2AResponse,
+    TimberWeight,
+    Voice,
+    VoiceSetting,
+)
+from .voice_clone_models import VoiceCloneRequest, VoiceCloneResponse
 from .voice_query_models import (
-    VoiceListResponse,
-    VoiceSlot,
+    MusicGeneration,
     SystemVoice,
     VoiceCloning,
     VoiceGeneration,
-    MusicGeneration,
-    VoiceType
-)
-from .file_upload_models import (
-    FileUploadResponse,
-    FileInfo
-)
-from .voice_clone_models import (
-    VoiceCloneRequest,
-    VoiceCloneResponse
-)
-from .config import VoiceConfig, LanguageConfig
-from .exceptions import (
-    MiniMaxError,
-    MiniMaxAPIError,
-    MiniMaxTimeoutError,
-    MiniMaxValidationError,
-    MiniMaxAuthenticationError,
-    MiniMaxRateLimitError,
-    MiniMaxQuotaExceededError,
+    VoiceListResponse,
+    VoiceSlot,
+    VoiceType,
 )
 
 __all__ = [
     # 客户端
     "MiniMaxSpeech",
     "AsyncMiniMaxSpeech",
-    
+
     # 模型
     "T2ARequest",
     "T2AData",
@@ -69,7 +62,7 @@ __all__ = [
     "T2AExtra",
     "PronunciationDict",
     "TimberWeight",
-    
+
     # 语音列表模型
     "VoiceListResponse",
     "VoiceSlot",
@@ -78,19 +71,19 @@ __all__ = [
     "VoiceGeneration",
     "MusicGeneration",
     "VoiceType",
-    
+
     # 文件上传模型
     "FileUploadResponse",
     "FileInfo",
-    
+
     # 语音克隆模型
     "VoiceCloneRequest",
     "VoiceCloneResponse",
-    
+
     # 配置
     "VoiceConfig",
     "LanguageConfig",
-    
+
     # 异常
     "MiniMaxError",
     "MiniMaxAPIError",
@@ -99,7 +92,7 @@ __all__ = [
     "MiniMaxAuthenticationError",
     "MiniMaxRateLimitError",
     "MiniMaxQuotaExceededError",
-    
+
     # 元数据
     "__version__",
     "__author__",

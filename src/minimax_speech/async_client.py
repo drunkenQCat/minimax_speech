@@ -1,42 +1,42 @@
-"""
-MiniMax Speech API 异步客户端
-"""
+"""MiniMax Speech API 异步客户端."""
 
-import json
 import asyncio
-from typing import Optional, List
+import json
+
 import aiohttp
 
+from .common_models import (
+    ValidAudioFormat,
+    ValidBitRate,
+    ValidEmotions,
+    ValidModels,
+    ValidSr,
+)
 from .config import APIConfig
+from .exceptions import MiniMaxAPIError, MiniMaxTimeoutError
+from .file_upload_models import FileUploadResponse
 from .tts_models import (
+    AudioSetting,
+    Language,
     T2ARequest,
     T2AResponse,
-    Language,
+    VoiceSetting,
 )
-from .common_models import (
-    ValidEmotions,
-    ValidSr,
-    ValidBitRate,
-    ValidAudioFormat,
-    ValidModels,
-)
-from .exceptions import MiniMaxAPIError, MiniMaxTimeoutError
-from .voice_query_models import VoiceListResponse, VoiceSlot, VoiceType
-from .file_upload_models import FileUploadResponse
 from .voice_clone_models import VoiceCloneRequest, VoiceCloneResponse
+from .voice_query_models import VoiceListResponse, VoiceSlot, VoiceType
 
 
 class AsyncMiniMaxSpeech:
-    """MiniMax Speech API 异步客户端"""
+    """MiniMax Speech API 异步客户端."""
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        group_id: Optional[str] = None,
-        base_url: Optional[str] = None,
-        timeout: Optional[int] = None,
-        max_retries: Optional[int] = None,
-    ):
+        api_key: str | None = None,
+        group_id: str | None = None,
+        base_url: str | None = None,
+        timeout: int | None = None,
+        max_retries: int | None = None,
+    ) -> None:
         self.config = APIConfig(
             api_key=api_key,
             group_id=group_id,
@@ -44,7 +44,7 @@ class AsyncMiniMaxSpeech:
             timeout=timeout,
             max_retries=max_retries,
         )
-        self.session: Optional[aiohttp.ClientSession] = None
+        self.session: aiohttp.ClientSession | None = None
 
     async def __aenter__(self):
         """异步上下文管理器入口"""
@@ -64,8 +64,7 @@ class AsyncMiniMaxSpeech:
             )
 
     async def get_voice(self, voice_type: VoiceType = "all") -> VoiceListResponse:
-        """
-        获取语音列表（异步）
+        """获取语音列表（异步）
 
         Args:
             voice_type: 语音类型，可选值：
@@ -81,6 +80,7 @@ class AsyncMiniMaxSpeech:
         Raises:
             MiniMaxAPIError: API错误
             MiniMaxTimeoutError: 超时错误
+
         """
         await self._ensure_session()
 
@@ -125,51 +125,51 @@ class AsyncMiniMaxSpeech:
             raise MiniMaxAPIError(f"Invalid JSON response: {str(e)}")
 
     async def get_voice_slots(self) -> list[VoiceSlot] | None:
-        """
-        获取语音槽位列表（异步）
+        """获取语音槽位列表（异步）
 
         Returns:
             list: 语音槽位列表
+
         """
         response = await self.get_voice("all")
         return response.voice_slots
 
     async def get_system_voices(self) -> list | None:
-        """
-        获取系统语音列表（异步）
+        """获取系统语音列表（异步）
 
         Returns:
             list: 系统语音列表
+
         """
         response = await self.get_voice("system")
         return response.system_voice
 
     async def get_cloned_voices(self) -> list | None:
-        """
-        获取克隆语音列表（异步）
+        """获取克隆语音列表（异步）
 
         Returns:
             list: 克隆语音列表
+
         """
         response = await self.get_voice("voice_cloning")
         return response.voice_cloning
 
     async def get_generated_voices(self) -> list | None:
-        """
-        获取生成的语音列表（异步）
+        """获取生成的语音列表（异步）
 
         Returns:
             list: 生成的语音列表
+
         """
         response = await self.get_voice("voice_generation")
         return response.voice_generation
 
     async def get_music_voices(self) -> list | None:
-        """
-        获取音乐生成语音列表（异步）
+        """获取音乐生成语音列表（异步）
 
         Returns:
             list: 音乐生成语音列表
+
         """
         response = await self.get_voice("music_generation")
         return response.music_generation
@@ -177,8 +177,7 @@ class AsyncMiniMaxSpeech:
     async def file_upload(
         self, input_file_path: str, purpose: str = "voice_clone"
     ) -> int:
-        """
-        上传文件（异步）
+        """上传文件（异步）
 
         Args:
             file_path: 文件路径
@@ -191,6 +190,7 @@ class AsyncMiniMaxSpeech:
             MiniMaxAPIError: API错误
             MiniMaxTimeoutError: 超时错误
             FileNotFoundError: 文件不存在
+
         """
         await self._ensure_session()
         if self.session is None:
@@ -252,8 +252,7 @@ class AsyncMiniMaxSpeech:
                 raise MiniMaxAPIError(f"Invalid JSON response: {str(e)}")
 
     async def voice_clone(self, request: VoiceCloneRequest) -> VoiceCloneResponse:
-        """
-        语音克隆（异步）
+        """语音克隆（异步）
 
         Args:
             request: 语音克隆请求对象
@@ -264,6 +263,7 @@ class AsyncMiniMaxSpeech:
         Raises:
             MiniMaxAPIError: API错误
             MiniMaxTimeoutError: 超时错误
+
         """
         await self._ensure_session()
         if self.session is None:
@@ -357,13 +357,12 @@ class AsyncMiniMaxSpeech:
         file_id: int,
         voice_id: str,
         need_noise_reduction: bool = False,
-        text: Optional[str] = None,
-        model: Optional[ValidModels] = None,
-        accuracy: Optional[float] = 0.7,
+        text: str | None = None,
+        model: ValidModels | None = None,
+        accuracy: float | None = 0.7,
         need_volume_normalization: bool = False,
     ) -> VoiceCloneResponse:
-        """
-        简化的语音克隆接口（异步）
+        """简化的语音克隆接口（异步）
 
         Args:
             file_id: 要克隆的文件ID
@@ -376,6 +375,7 @@ class AsyncMiniMaxSpeech:
 
         Returns:
             VoiceCloneResponse: 语音克隆响应对象
+
         """
         request = VoiceCloneRequest(
             file_id=file_id,
@@ -390,8 +390,7 @@ class AsyncMiniMaxSpeech:
         return await self.voice_clone(request)
 
     async def text_to_speech(self, request: T2ARequest) -> T2AResponse:
-        """
-        文本转语音（异步）
+        """文本转语音（异步）
 
         Args:
             request: T2A请求对象
@@ -402,6 +401,7 @@ class AsyncMiniMaxSpeech:
         Raises:
             MiniMaxAPIError: API错误
             MiniMaxTimeoutError: 超时错误
+
         """
         await self._ensure_session()
 
@@ -473,14 +473,13 @@ class AsyncMiniMaxSpeech:
         speed: float = 1.0,
         volume: float = 1.0,
         pitch: int = 0,
-        emotion: Optional[ValidEmotions] = None,
+        emotion: ValidEmotions | None = None,
         format: ValidAudioFormat = "mp3",
         sample_rate: ValidSr = 32000,
         bitrate: ValidBitRate = 128000,
-        language_boost: Optional[Language] = None,
+        language_boost: Language | None = None,
     ) -> T2AResponse:
-        """
-        简化的文本转语音接口（异步）
+        """简化的文本转语音接口（异步）.
 
         Args:
             text: 要转换的文本
@@ -497,9 +496,8 @@ class AsyncMiniMaxSpeech:
 
         Returns:
             T2AResponse: 语音响应对象
-        """
-        from .tts_models import VoiceSetting, AudioSetting, T2ARequest
 
+        """
         voice_setting = VoiceSetting(
             voice_id=voice_id, speed=speed, vol=volume, pitch=pitch, emotion=emotion
         )
@@ -519,10 +517,9 @@ class AsyncMiniMaxSpeech:
         return await self.text_to_speech(request)
 
     async def batch_text_to_speech(
-        self, requests: List[T2ARequest], max_concurrent: int = 5
-    ) -> List[T2AResponse | BaseException]:
-        """
-        批量文本转语音
+        self, requests: list[T2ARequest], max_concurrent: int = 5
+    ) -> list[T2AResponse | BaseException]:
+        """批量文本转语音
 
         Args:
             requests: T2A请求列表
@@ -530,6 +527,7 @@ class AsyncMiniMaxSpeech:
 
         Returns:
             List[T2AResponse]: 响应列表
+
         """
         semaphore = asyncio.Semaphore(max_concurrent)
 
