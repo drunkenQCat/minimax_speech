@@ -1,8 +1,8 @@
-"""MiniMax Speech API 同步客户端
-"""
+"""MiniMax Speech API 同步客户端"""
 
 import json
 from pathlib import Path
+from typing import get_args
 
 import requests
 
@@ -272,12 +272,7 @@ class MiniMaxSpeech:
 
         # 验证model
         if request.model:
-            valid_models = [
-                "speech-02-hd",
-                "speech-02-turbo",
-                "speech-01-hd",
-                "speech-01-turbo",
-            ]
+            valid_models = get_args(ValidModels)
             if request.model not in valid_models:
                 raise ValueError(f"Invalid model: {request.model}")
 
@@ -389,7 +384,7 @@ class MiniMaxSpeech:
             raise ValueError("Text too long, maximum 5000 characters allowed")
 
         # 验证模型
-        valid_models = ["speech-02-hd", "speech-01-turbo", "speech-01-hd"]
+        valid_models = get_args(ValidModels)
         if request.model not in valid_models:
             raise ValueError(f"Invalid model: {request.model}")
 

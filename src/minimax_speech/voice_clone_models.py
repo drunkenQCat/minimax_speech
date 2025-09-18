@@ -1,6 +1,4 @@
-"""MiniMax Voice Clone API 数据模型
-"""
-
+"""MiniMax Voice Clone API 数据模型"""
 
 from pydantic import BaseModel, Field
 
@@ -21,11 +19,9 @@ class VoiceCloneRequest(BaseModel):
         default=None,
         description="模型将为给定文本生成音频，用于预览语音克隆效果，限制2000字符",
     )
-    model: ValidModels | None = Field(
-        default=None, description="指定用于预览的TTS模型"
-    )
+    model: ValidModels | None = Field(default=None, description="指定用于预览的TTS模型")
     accuracy: float | None = Field(
-        default=0.7, description="文本验证精度阈值，范围[0,1]"
+        default=0.7, description="文本验证精度阈值，范围[0,1]", ge=0, le=1
     )
     need_volume_normalization: bool | None = Field(
         default=False, description="是否启用音量标准化"

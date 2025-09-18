@@ -1,5 +1,4 @@
-"""MiniMax Speech API 数据模型
-"""
+"""MiniMax Speech API 数据模型"""
 
 from enum import Enum
 from typing import Literal
@@ -94,7 +93,10 @@ class VoiceSetting(BaseModel):
     vol: confloat(gt=0, le=10) = 1.0  # type: ignore[reportInvalidTypeForm]
     pitch: conint(ge=-12, le=12) = 0  # type: ignore[reportInvalidTypeForm]
     voice_id: str | Voice | None = None
-    emotion: Literal["happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"] | None = None
+    emotion: (
+        Literal["happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"]
+        | None
+    ) = None
     english_normalization: bool = False
 
 
@@ -117,13 +119,22 @@ class TimberWeight(BaseModel):
     weight: conint(ge=1, le=100)  # type: ignore[reportInvalidTypeForm]
 
 
+class VoiceModify(BaseModel):
+    pitch: int = Field(default=0, ge=-100, le=100)
+    intensity: int = Field(default=0, ge=-100, le=100)
+    timbre: int = Field(default=0, ge=-100, le=100)  # 小了加鼻音，大了加脆音
+    sound_effects: Literal[
+        "spacious_echo", "auditorium_echo", "lofi_telephone", "robotic", ""
+    ] = ""
+
+
 class T2ARequest(BaseModel):
     model: ValidModels
     text: str = Field(..., max_length=5000)
     voice_setting: VoiceSetting
     audio_setting: AudioSetting = AudioSetting()
-    pronunciation_dict: PronunciationDict | None = None
-    timber_weights: list[TimberWeight] | None = None
+    pronunciation_dict: PronunciationDict | None = None  # 可用于调整字词
+    timber_weights: list[TimberWeight] | None = None  # 可用于融合音色
     stream: bool = False
     language_boost: Language | None = None
     subtitle_enable: bool = False
