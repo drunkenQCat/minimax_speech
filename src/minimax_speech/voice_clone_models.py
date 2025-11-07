@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, Field
 
+from minimax_speech.tts_models import Language
+
 from .common_models import BaseResponse, ValidModels
 
 
@@ -20,6 +22,8 @@ class VoiceCloneRequest(BaseModel):
         description="模型将为给定文本生成音频，用于预览语音克隆效果，限制2000字符",
     )
     model: ValidModels | None = Field(default=None, description="指定用于预览的TTS模型")
+    language_boost: Language = Language.AUTO
+    # deprecated
     accuracy: float | None = Field(
         default=0.7, description="文本验证精度阈值，范围[0,1]", ge=0, le=1
     )
@@ -31,7 +35,8 @@ class VoiceCloneRequest(BaseModel):
 class VoiceCloneResponse(BaseModel):
     """语音克隆响应模型"""
 
-    input_sensitive: bool = Field(description="指示输入音频是否触发了任何错误")
+    input_sensitive: bool = Field(description="指示输入音频内容是否违规")
+    demo_audio: str = Field(description="如果请求中有text，那么会返回一个预览音频的URL")
     base_resp: BaseResponse = Field(description="基础响应信息")
 
 

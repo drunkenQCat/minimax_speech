@@ -9,6 +9,7 @@ from .common_models import (
     BaseResponse,
     ValidAudioFormat,
     ValidBitRate,
+    ValidEmotions,
     ValidModels,
     ValidSr,
 )
@@ -88,16 +89,18 @@ class AudioChannels(int, Enum):
     STEREO = 2
 
 
+class StreamOptions(BaseModel):
+    exclude_aggregated_audio: bool = False
+
+
 class VoiceSetting(BaseModel):
     speed: confloat(ge=0.5, le=2) = 1.0  # type: ignore[reportInvalidTypeForm]
     vol: confloat(gt=0, le=10) = 1.0  # type: ignore[reportInvalidTypeForm]
     pitch: conint(ge=-12, le=12) = 0  # type: ignore[reportInvalidTypeForm]
     voice_id: str | Voice | None = None
-    emotion: (
-        Literal["happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"]
-        | None
-    ) = None
-    english_normalization: bool = False
+    emotion: ValidEmotions | None = None
+    text_normalization: bool = False
+    latex_read: bool = False
 
 
 class AudioSetting(BaseModel):
@@ -105,6 +108,7 @@ class AudioSetting(BaseModel):
     bitrate: ValidBitRate | None = 128000
     format: ValidAudioFormat | None = "mp3"
     channel: AudioChannels = AudioChannels.MONO
+    force_cbr: bool = False
 
     class AudioSetting:
         use_enum_values = True
@@ -131,6 +135,8 @@ class VoiceModify(BaseModel):
 class T2ARequest(BaseModel):
     model: ValidModels
     text: str = Field(..., max_length=5000)
+    stream: bool = False
+    stream_options: StreamOptions | None = None
     voice_setting: VoiceSetting
     audio_setting: AudioSetting = AudioSetting()
     pronunciation_dict: PronunciationDict | None = None  # 可用于调整字词
@@ -142,7 +148,7 @@ class T2ARequest(BaseModel):
 
 
 class T2AData(BaseModel):
-    """文本转语音响应模型"""
+    """文本转语音响应模型。"""
 
     audio: bytes = Field(..., description="音频数据")
     status: int = Field(
@@ -183,6 +189,7 @@ class T2AExtra(BaseModel):
     )
     invisible_character_ratio: float = Field(..., description="非法字符百分比")
     usage_characters: int = Field(..., description="本次语音生成的计费字符数")
+    word_count: int = Field(..., description="本次语音生成的字符数")
 
 
 class T2AResponse(BaseModel):

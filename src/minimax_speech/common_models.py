@@ -4,10 +4,12 @@ from pydantic import BaseModel, Field
 
 ValidSr = Literal[8000, 16000, 22050, 24000, 32000, 44100]
 ValidBitRate = Literal[32000, 64000, 128000, 256000]
-ValidAudioFormat = Literal["mp3", "pcm", "flac"]
+ValidAudioFormat = Literal["mp3", "pcm", "flac", "wav"]
 ValidModels = Literal[
-    "speech-2.5-hd-preview",
-    "speech-2.5-turbo-preview",
+    "speech-2.6-hd",
+    "speech-2.6-turbo",
+    # "speech-2.5-hd-preview",
+    # "speech-2.5-turbo-preview",
     "speech-02-hd",
     "speech-02-turbo",
     "speech-01-hd",
@@ -15,7 +17,14 @@ ValidModels = Literal[
 ]
 ValidDeleteVoiceType = Literal["voice_generation", "voice_cloning"]
 ValidEmotions = Literal[
-    "happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"
+    "happy",
+    "sad",
+    "angry",
+    "fearful",
+    "disgusted",
+    "surprised",
+    "calm",
+    "fluent",
 ]
 
 
@@ -41,6 +50,7 @@ class BaseResponse(BaseModel):
             1039: "触发TPM流量限制",
             1042: "非法字符超过最大值（超过输入的10%）",
             2013: "输入格式无效",
+            2038: "无克隆音色许可",
             2039: "音色ID已经存在",
         }
         error_msg = (
