@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 .idea
+benchmark_outputs
+indextts_benchmark_outputs
+.vscode

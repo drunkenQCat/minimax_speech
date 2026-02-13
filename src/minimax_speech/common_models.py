@@ -6,6 +6,8 @@ ValidSr = Literal[8000, 16000, 22050, 24000, 32000, 44100]
 ValidBitRate = Literal[32000, 64000, 128000, 256000]
 ValidAudioFormat = Literal["mp3", "pcm", "flac", "wav"]
 ValidModels = Literal[
+    "speech-2.8-hd",
+    "speech-2.8-turbo",
     "speech-2.6-hd",
     "speech-2.6-turbo",
     # "speech-2.5-hd-preview",

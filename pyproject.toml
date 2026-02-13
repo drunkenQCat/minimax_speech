@@ -1,6 +1,6 @@
 [project]
 name = "minimax-speech"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Python package for MiniMax speech API (T2A, A2T) with support for Chinese, English, French, and Russian"
 readme = "README.md"
 authors = [
@@ -15,6 +15,7 @@ dependencies = [
     "asyncio-mqtt>=0.16.0",
     "openpyxl>=3.1.5",
     "pypinyin>=0.54.0",
+    "mutagen>=1.47.0",
 ]
 
 [project.optional-dependencies]
